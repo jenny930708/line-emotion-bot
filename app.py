@@ -40,8 +40,11 @@ def handle_message(event):
     result = classifier(user_input)[0]
     emotion = result['label']
     suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔！💡")
-    line_bot_api.reply_message(event.reply_token,TextSendMessage(text=f"你的情緒是：{emotion}")
-👉 {suggestion}"))
+    line_bot_api.reply_message(
+    event.reply_token,
+    TextSendMessage(text=f"你的情緒是：{emotion}\n👉 {suggestion}")
+)
+
 
 if __name__ == "__main__":
     app.run()
