@@ -8,6 +8,9 @@ import os
 import tempfile
 import sqlite3
 import datetime
+def is_general_question(text):
+    keywords = ["你是誰", "聊天", "今天天氣", "可以說話", "聊聊", "想問你", "想知道", "你覺得", "你會", "嗎", "？", "?"]
+    return any(kw in text for kw in keywords)
 from linebot.models import FlexSendMessage
 from collections import Counter
 
@@ -98,6 +101,11 @@ def callback():
 def handle_text(event):
     user_id = event.source.user_id
     user_input = event.message.text.strip()
+    if is_general_question(user_input):
+        reply = chat_response(user_input, user_styles.get(user_id, "一般"))
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+        return
+
     if user_input == "/上週情緒":
         one_week_ago = (datetime.datetime.now() - datetime.timedelta(days=7)).isoformat()
         c.execute("SELECT * FROM memory WHERE user_id = ? AND datetime >= ?", (user_id, one_week_ago))
