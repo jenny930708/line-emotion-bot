@@ -1,4 +1,3 @@
-
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -58,8 +57,7 @@ def handle_text(event):
     result = classifier(user_input)[0]
     emotion = result['label']
     if emotion in emotion_response:
-        reply = f"你的情緒是：{emotion}
-👉 {emotion_response[emotion]}"
+        reply = f"你的情緒是：{emotion}\n👉 {emotion_response[emotion]}"
     else:
         reply = chat_response(user_input)
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
@@ -77,9 +75,7 @@ def handle_audio(event):
         result = classifier(text)[0]
         emotion = result['label']
         suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔 💡")
-        reply = f"🎧 語音內容為：{text}
-你的情緒是：{emotion}
-👉 {suggestion}"
+        reply = f"🎧 語音內容為：{text}\n你的情緒是：{emotion}\n👉 {suggestion}"
     except Exception as e:
         reply = f"語音處理失敗：{str(e)}"
 
