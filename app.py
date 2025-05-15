@@ -1,16 +1,18 @@
+
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage, StickerMessage
 from transformers import pipeline
 import openai
 import os
+import tempfile
+import requests
 
 app = Flask(__name__)
 
-# 將你的 Key 放進環境變數或直接放這（開發用）
-line_bot_api = LineBotApi('你的 Line Channel Access Token')
-handler = WebhookHandler('你的 Line Channel Secret')
+line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
+handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 openai.api_key = os.environ['OPENAI_API_KEY']
 
 classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -25,16 +27,20 @@ emotion_response = {
     'neutral': "平穩的一天也很棒，別忘了喝水與休息 💧"
 }
 
-# 🧠 GPT 聊天邏輯
 def chat_response(user_text):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "你是一位貼心、溫柔又幽默的 AI 室友，會根據使用者的話做自然回應。"},
+            {"role": "system", "content": "你是一位貼心的 AI 室友，會根據使用者的訊息做自然、溫暖的回應。"},
             {"role": "user", "content": user_text}
         ]
     )
     return response.choices[0].message.content.strip()
+
+def transcribe_audio(file_path):
+    with open(file_path, "rb") as audio_file:
+        transcript = openai.Audio.transcribe("whisper-1", audio_file)
+    return transcript["text"]
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -47,20 +53,43 @@ def callback():
     return 'OK'
 
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
+def handle_text(event):
     user_input = event.message.text
     result = classifier(user_input)[0]
     emotion = result['label']
-
     if emotion in emotion_response:
-        response_text = f"你的情緒是：{emotion}\n👉 {emotion_response[emotion]}"
+        reply = f"你的情緒是：{emotion}
+👉 {emotion_response[emotion]}"
     else:
-        response_text = chat_response(user_input)
+        reply = chat_response(user_input)
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=response_text)
-    )
+@handler.add(MessageEvent, message=AudioMessage)
+def handle_audio(event):
+    message_content = line_bot_api.get_message_content(event.message.id)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".m4a") as tf:
+        for chunk in message_content.iter_content(chunk_size=1024):
+            tf.write(chunk)
+        tf_path = tf.name
+
+    try:
+        text = transcribe_audio(tf_path)
+        result = classifier(text)[0]
+        emotion = result['label']
+        suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔 💡")
+        reply = f"🎧 語音內容為：{text}
+你的情緒是：{emotion}
+👉 {suggestion}"
+    except Exception as e:
+        reply = f"語音處理失敗：{str(e)}"
+
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+
+@handler.add(MessageEvent, message=StickerMessage)
+def handle_sticker(event):
+    sticker_id = event.message.sticker_id
+    reply = f"😄 你傳了一個貼圖（ID：{sticker_id}），好可愛！"
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
