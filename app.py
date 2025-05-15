@@ -13,7 +13,7 @@ app = Flask(__name__)
 # 初始化 LINE Bot 與 OpenAI
 line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
-client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+openai.api_key = os.environ['OPENAI_API_KEY']
 
 # 情緒分類器
 classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -31,14 +31,14 @@ emotion_response = {
 
 # GPT 回覆（新版 API）
 def chat_response(user_text):
-    response = client.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "你是一位貼心的 AI 室友，會根據使用者的訊息做自然、溫暖的回應。"},
             {"role": "user", "content": user_text}
         ]
     )
-    return response.choices[0].message.content.strip()
+    return response['choices'][0]['message']['content'].strip()
 
 # 語音轉文字（Whisper）
 def transcribe_audio(file_path):
