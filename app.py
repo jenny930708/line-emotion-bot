@@ -1,4 +1,3 @@
-
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -7,7 +6,6 @@ from transformers import pipeline
 import openai
 import os
 import tempfile
-
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -66,10 +64,14 @@ def handle_text(event):
     user_input = event.message.text
     result = classifier(user_input)[0]
     emotion = result['label'].lower()
-    if emotion in emotion_response:
-        reply = f"你的情緒是：{emotion}\n👉 {emotion_response[emotion]}"
+    suggestion = emotion_response.get(emotion)
+    ai_reply = chat_response(user_input)
+
+    if suggestion:
+        reply = f"你的情緒是：{emotion}\n👉 {suggestion}\n\n🗣 {ai_reply}"
     else:
-        reply = chat_response(user_input)
+        reply = ai_reply
+
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
 @handler.add(MessageEvent, message=AudioMessage)
@@ -85,7 +87,8 @@ def handle_audio(event):
         result = classifier(text)[0]
         emotion = result['label'].lower()
         suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔 💡")
-        reply = f"🎧 語音內容為：{text}\n你的情緒是：{emotion}\n👉 {suggestion}"
+        ai_reply = chat_response(text)
+        reply = f"🎧 語音內容為：{text}\n你的情緒是：{emotion}\n👉 {suggestion}\n\n🗣 {ai_reply}"
     except Exception as e:
         reply = f"語音處理失敗：{str(e)}"
 
