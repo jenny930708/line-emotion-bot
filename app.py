@@ -1,13 +1,14 @@
-
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from transformers import pipeline
 
+import os  # 若你改用環境變數也可以使用
+
 app = Flask(__name__)
 
-line_bot_api = LineBotApi('rc5MlSvrXcnjmbdB68PggoiG47+mj8LL/jEhjT+Gaj9dVkvR7mi0OQ2DngYvDnB0tfo+KU3h2T12cskbECKnXB 3NTKG3tgDJ6B7PlREkINdLmXCKJFkcz/TU42Jgp6VoWonxvQMQENPTc8Q11zrQbAdB04t89/1O/w1cDnyilFU=')
+line_bot_api = LineBotApi('rc5MlSvrXcnjmbdB68PggoiG47+mj8LL/jEhjT+Gaj9dVkvR7mi0OQ2DngYvDnB0tfo+KU3h2T12cskbECKnXB3NTKG3tgDJ6B7PlREkINdLmXCKJFkcz/TU42Jgp6VoWonxvQMQENPTc8Q11zrQbAdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler('3ab6df516a940cfe65f2fbc163147dc3')
 
 classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -41,10 +42,9 @@ def handle_message(event):
     emotion = result['label']
     suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔！💡")
     line_bot_api.reply_message(
-    event.reply_token,
-    TextSendMessage(text=f"你的情緒是：{emotion}\n👉 {suggestion}")
-)
-
+        event.reply_token,
+        TextSendMessage(text=f"你的情緒是：{emotion}\n👉 {suggestion}")
+    )
 
 if __name__ == "__main__":
     app.run()
