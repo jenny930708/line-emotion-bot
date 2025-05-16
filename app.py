@@ -9,15 +9,15 @@ import tempfile
 
 app = Flask(__name__)
 
-# 使用 .env 環境變數
+# 初始化 LINE 和 OpenAI
 line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
-# 情緒分類模型
+# 情緒分類器
 classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
 
-# 情緒建議字典
+# 情緒對應語句
 emotion_response = {
     'joy': "你看起來心情很好！可以試著挑戰新任務哦！✨",
     'anger': "你似乎有點生氣，試著做深呼吸，或出去走走吧 🌳",
@@ -28,7 +28,7 @@ emotion_response = {
     'neutral': "平穩的一天也很棒，別忘了喝水與休息 💧"
 }
 
-# GPT 回覆功能
+# GPT-3.5 聊天功能
 def chat_response(user_text):
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -39,25 +39,21 @@ def chat_response(user_text):
     )
     return response.choices[0].message.content.strip()
 
-# Whisper 語音轉文字
+# 語音辨識
 def transcribe_audio(file_path):
     with open(file_path, "rb") as audio_file:
-        transcript = openai.Audio.transcribe(
+        transcript = client.audio.transcriptions.create(
             model="whisper-1",
             file=audio_file
         )
-    return transcript["text"]
+    return transcript.text
 
-# 預設首頁（Render 防止 404）
-@app.route("/", methods=["GET"])
-def index():
-    return "Line Emotion Bot is running!"
-
-# Webhook 路徑
+# 接收 LINE webhook
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
+
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
@@ -68,15 +64,18 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text(event):
     user_input = event.message.text
-    result = classifier(user_input)[0]
-    emotion = result['label'].lower()
-    suggestion = emotion_response.get(emotion)
-    ai_reply = chat_response(user_input)
 
-    if suggestion:
-        reply = f"你的情緒是：{emotion}\n👉 {suggestion}\n\n🗣 {ai_reply}"
-    else:
-        reply = ai_reply
+    try:
+        result = classifier(user_input)[0]
+        emotion = result['label'].lower()
+
+        # 若為一般情緒敘述，則回應建議；否則交給 GPT 聊天
+        if emotion in emotion_response and emotion != 'neutral':
+            reply = f"你的情緒是：{emotion}\n👉 {emotion_response[emotion]}"
+        else:
+            reply = chat_response(user_input)
+    except Exception as e:
+        reply = f"處理失敗：{str(e)}"
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
@@ -94,8 +93,7 @@ def handle_audio(event):
         result = classifier(text)[0]
         emotion = result['label'].lower()
         suggestion = emotion_response.get(emotion, "我還不太確定你的情緒，但我會一直陪著你喔 💡")
-        ai_reply = chat_response(text)
-        reply = f"🎧 語音內容為：{text}\n你的情緒是：{emotion}\n👉 {suggestion}\n\n🗣 {ai_reply}"
+        reply = f"🎧 語音內容為：{text}\n你的情緒是：{emotion}\n👉 {suggestion}"
     except Exception as e:
         reply = f"語音處理失敗：{str(e)}"
 
