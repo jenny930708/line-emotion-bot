@@ -31,7 +31,7 @@ emotion_response = {
 # GPT 回覆功能
 def chat_response(user_text):
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4-turbo",
         messages=[
             {"role": "system", "content": "你是一位貼心的 AI 室友，會根據使用者的訊息做自然、溫暖的回應。"},
             {"role": "user", "content": user_text}
