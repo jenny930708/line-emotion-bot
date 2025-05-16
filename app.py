@@ -3,7 +3,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage, StickerMessage
 from transformers import pipeline
-import openai
+from openai import OpenAI
 import os
 import tempfile
 
@@ -12,7 +12,7 @@ app = Flask(__name__)
 # 使用 .env 環境變數
 line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
-openai.api_key = os.environ['OPENAI_API_KEY']
+client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
 # 情緒分類模型
 classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-uncased-emotion")
@@ -30,14 +30,14 @@ emotion_response = {
 
 # GPT 回覆功能
 def chat_response(user_text):
-    response = openai.ChatCompletion.create(
-        model="gpt-4-turbo",
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "你是一位貼心的 AI 室友，會根據使用者的訊息做自然、溫暖的回應。"},
             {"role": "user", "content": user_text}
         ]
     )
-    return response['choices'][0]['message']['content'].strip()
+    return response.choices[0].message.content.strip()
 
 # Whisper 語音轉文字
 def transcribe_audio(file_path):
