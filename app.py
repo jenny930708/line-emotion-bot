@@ -24,13 +24,13 @@ user_memory = {}
 
 # 情緒對應建議與音樂
 emotion_response = {
-    'joy':     {"suggest": "你看起來心情很好！可以試著挑戰新任務哦！✨", "music": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"},
-    'anger':   {"suggest": "你似乎有點生氣，試著做深呼吸，或出去走走吧 🌳", "music": "https://open.spotify.com/track/1Qrg8KqiBpW07V7PNxwwwL"},
-    'sadness': {"suggest": "我在這陪你～建議聽聽輕音樂放鬆一下 🎧", "music": "https://open.spotify.com/track/5KawlOMHjWeUjQtnuRs22c"},
-    'fear':    {"suggest": "感到害怕時可以找人聊聊，也可以聽冥想音樂 🧘", "music": "https://open.spotify.com/track/2kP0T4Aorxb8QjDGH1OWvx"},
-    'love':    {"suggest": "喜歡的感覺真好！可以把喜歡的事記錄下來喔 📝", "music": "https://open.spotify.com/track/3xKsf9qdS1CyvXSMEid6g8"},
-    'surprise':{"suggest": "驚訝嗎？今天有什麼新鮮事？可以分享給我聽 😯", "music": "https://open.spotify.com/track/3G69G3g5Yx9GQDJ6MSy7hD"},
-    'neutral': {"suggest": "平穩的一天也很棒，別忘了喝水與休息 💧", "music": "https://open.spotify.com/track/2dLLR6qlu5UJ5gk0dKz0h3"}
+    'joy': "你看起來心情很好！可以試著挑戰新任務哦！✨\n🎵 推薦音樂：https://www.youtube.com/watch?v=ZbZSe6N_BXs",
+    'anger': "你似乎有點生氣，試著做深呼吸，或出去走走吧 🌳\n🎵 推薦音樂：https://www.youtube.com/watch?v=IYzlVDlE72w",
+    'sadness': "我在這陪你～建議聽聽輕音樂放鬆一下 🎧\n🎵 推薦音樂：https://www.youtube.com/watch?v=2OEL4P1Rz04",
+    'fear': "感到害怕時可以找人聊聊，也可以聽冥想音樂 🧘\n🎵 推薦音樂：https://www.youtube.com/watch?v=Mk7-GRWq7wA",
+    'love': "喜歡的感覺真好！可以把喜歡的事記錄下來喔 📝\n🎵 推薦音樂：https://www.youtube.com/watch?v=450p7goxZqg",
+    'surprise': "驚訝嗎？今天有什麼新鮮事？可以分享給我聽 😯\n🎵 推薦音樂：https://www.youtube.com/watch?v=euCqAq6BRa4",
+    'neutral': "平穩的一天也很棒，別忘了喝水與休息 💧\n🎵 推薦音樂：https://www.youtube.com/watch?v=WUXQzz2FKqk"
 }
 
 def chat_response(user_id, user_text):
