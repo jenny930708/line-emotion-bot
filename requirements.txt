@@ -1,7 +1,4 @@
 flask
 line-bot-sdk
 openai
-transformers
-torch
-langdetect
-youtube-search-python
+python-dotenv
