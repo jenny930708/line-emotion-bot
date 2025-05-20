@@ -1,6 +1,5 @@
-
 flask
 line-bot-sdk
 transformers
-openai>=1.0.0
+openai
 torch
