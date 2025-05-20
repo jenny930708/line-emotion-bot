@@ -3,3 +3,4 @@ line-bot-sdk
 transformers
 openai
 langdetect
+torch
