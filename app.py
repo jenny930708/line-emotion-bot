@@ -67,14 +67,18 @@ def handle_message(event):
     # 呼叫 OpenAI
     import openai
     openai.api_key = OPENAI_API_KEY
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "你是一個友善的情緒偵測 AI 室友。"},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    ai_reply = response['choices'][0]['message']['content']
+    from openai import OpenAI
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "你是一個友善的情緒偵測 AI 室友。"},
+        {"role": "user", "content": prompt}
+    ]
+)
+ai_reply = response.choices[0].message.content
 
     # 回覆訊息
     full_reply = f"{ai_reply}\n\n🌈 目前情緒：{emotion}\n🎵 推薦音樂：{music_link}"
