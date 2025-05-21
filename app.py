@@ -41,6 +41,11 @@ def log_interaction(user_id, user_input, ai_reply, emotion):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{datetime.now()}] User: {user_id}\nInput: {user_input}\nEmotion: {emotion}\nAI: {ai_reply}\n---\n")
 
+def search_news(query):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    url = f"https://www.google.com/search?q={query}+site:news.google.com"
+    return f"🔎 幫你查詢的新聞如下：\n{url}"
+
 @app.route("/", methods=['GET'])
 def health_check():
     return "Bot is running!"
@@ -63,8 +68,16 @@ def handle_text_message(event):
     memory = load_memory()
     user_history = memory.get(user_id, [])
 
-    emotion = detect_emotion(user_input)
+    # 如果使用者問新聞
+    if any(keyword in user_input for keyword in ["新聞", "查詢", "幫我查", "報導"]):
+        news_link = search_news(user_input)
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=news_link)
+        )
+        return
 
+    emotion = detect_emotion(user_input)
     history_text = "\n".join(user_history[-3:])
     prompt = f"你是一位貼心的 AI 室友，用自然語言回答使用者：\n{history_text}\n使用者：{user_input}\nAI："
 
