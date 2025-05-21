@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage
@@ -11,6 +11,8 @@ from openai import OpenAI
 import openai
 import tempfile
 import requests
+import matplotlib.pyplot as plt
+from collections import defaultdict, Counter
 
 # 載入環境變數
 load_dotenv()
@@ -20,6 +22,7 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TEACHER_USER_ID = os.getenv("TEACHER_USER_ID")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 MEMORY_FILE = "memory.json"
@@ -40,6 +43,64 @@ def save_memory(memory):
 def log_interaction(user_id, user_input, ai_reply, emotion):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{datetime.now()}] User: {user_id}\nInput: {user_input}\nEmotion: {emotion}\nAI: {ai_reply}\n---\n")
+
+def parse_emotion_logs(user_id):
+    data = defaultdict(list)
+    if not os.path.exists(LOG_FILE):
+        return data
+    with open(LOG_FILE, encoding="utf-8") as f:
+        current_date = None
+        current_user = None
+        for line in f:
+            if line.startswith("["):
+                current_date = datetime.strptime(line[1:20], "%Y-%m-%d %H:%M:%S")
+            elif line.startswith("User: "):
+                current_user = line.strip().split(": ")[-1]
+            elif line.startswith("Emotion:") and current_date and current_user == user_id:
+                emotion = line.strip().split(":")[-1].strip()
+                data[current_date.strftime("%Y-%m-%d")].append(emotion)
+    return data
+
+def detect_negative_trend(user_id):
+    emotion_log = parse_emotion_logs(user_id)
+    recent = list(emotion_log.items())[-7:]  # 過去7天
+    negative_count = 0
+    for _, emotions in recent:
+        for emo in emotions:
+            if emo in ["sad", "anger", "fear"]:
+                negative_count += 1
+    return negative_count >= 5
+
+def generate_emotion_chart(user_id):
+    data = parse_emotion_logs(user_id)
+    day_keys = sorted(data.keys())
+    counts = []
+    for day in day_keys:
+        emotion_counter = Counter(data[day])
+        counts.append(sum(emotion_counter[emo] for emo in ["sad", "anger", "fear"]))
+    plt.figure(figsize=(10, 4))
+    plt.plot(day_keys, counts, marker='o')
+    plt.title("近期負面情緒趨勢")
+    plt.xlabel("日期")
+    plt.ylabel("次數")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    chart_path = f"chart_{user_id}.png"
+    plt.savefig(chart_path)
+    plt.close()
+    return chart_path
+
+def alert_teacher(user_id):
+    chart_path = generate_emotion_chart(user_id)
+    line_bot_api.push_message(
+        TEACHER_USER_ID,
+        TextSendMessage(text=f"⚠️ 學生 {user_id} 最近情緒異常，請關注。")
+    )
+    with open(chart_path, 'rb') as f:
+        line_bot_api.push_message(
+            TEACHER_USER_ID,
+            TextSendMessage(text="（圖表請見附件）")
+        )
 
 @app.route("/", methods=['GET'])
 def health_check():
@@ -92,6 +153,9 @@ def handle_text_message(event):
     memory[user_id] = user_history[-10:]
     save_memory(memory)
     log_interaction(user_id, user_input, ai_reply, emotion)
+
+    if detect_negative_trend(user_id):
+        alert_teacher(user_id)
 
 @handler.add(MessageEvent, message=AudioMessage)
 def handle_audio_message(event):
