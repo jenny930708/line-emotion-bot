@@ -42,9 +42,23 @@ def log_interaction(user_id, user_input, ai_reply, emotion):
         f.write(f"[{datetime.now()}] User: {user_id}\nInput: {user_input}\nEmotion: {emotion}\nAI: {ai_reply}\n---\n")
 
 def search_news(query):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    url = f"https://www.google.com/search?q={query}+site:news.google.com"
-    return f"🔎 幫你查詢的新聞如下：\n{url}"
+    api_key = os.getenv("SERPAPI_KEY")
+    params = {
+        "q": query,
+        "location": "Taiwan",
+        "hl": "zh-tw",
+        "gl": "tw",
+        "api_key": api_key
+    }
+    res = requests.get("https://serpapi.com/search.json", params=params)
+    data = res.json()
+    results = data.get("news_results", [])
+    if not results:
+        return "❌ 查無新聞結果，請換個關鍵字試試看。"
+    reply = "📢 幫你查詢的新聞如下：\n"
+    for i, item in enumerate(results[:3], 1):
+        reply += f"{i}. {item['title']}\n👉 {item['link']}\n\n"
+    return reply.strip()
 
 @app.route("/", methods=['GET'])
 def health_check():
@@ -70,10 +84,10 @@ def handle_text_message(event):
 
     # 如果使用者問新聞
     if any(keyword in user_input for keyword in ["新聞", "查詢", "幫我查", "報導"]):
-        news_link = search_news(user_input)
+        news_reply = search_news(user_input)
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=news_link)
+            TextSendMessage(text=news_reply)
         )
         return
 
