@@ -1,7 +1,3 @@
-@app.route("/", methods=['GET'])
-def health_check():
-    return "Bot is running!"
-以上要加入
 import os
 import json
 from datetime import datetime
