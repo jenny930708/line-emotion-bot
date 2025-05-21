@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, request, abort, jsonify
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage, ImageSendMessage
 from utils import detect_emotion, suggest_music
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -22,7 +22,7 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-TEACHER_USER_ID = os.getenv("TEACHER_USER_ID")
+TEACHER_USER_IDS = os.getenv("TEACHER_USER_IDS", "").split(",")  # 多位導師用逗號分隔
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 MEMORY_FILE = "memory.json"
@@ -90,17 +90,32 @@ def generate_emotion_chart(user_id):
     plt.close()
     return chart_path
 
-def alert_teacher(user_id):
+def alert_teacher(user_id, student_name):
     chart_path = generate_emotion_chart(user_id)
-    line_bot_api.push_message(
-        TEACHER_USER_ID,
-        TextSendMessage(text=f"⚠️ 學生 {user_id} 最近情緒異常，請關注。")
-    )
-    with open(chart_path, 'rb') as f:
+    for teacher_id in TEACHER_USER_IDS:
         line_bot_api.push_message(
-            TEACHER_USER_ID,
-            TextSendMessage(text="（圖表請見附件）")
+            teacher_id,
+            TextSendMessage(text=f"⚠️ 學生 {student_name} 最近情緒異常，請關注。")
         )
+        image_url = upload_image(chart_path)
+        if image_url:
+            line_bot_api.push_message(
+                teacher_id,
+                ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
+            )
+
+def upload_image(path):
+    # 圖片上傳到 Imgur 暫存處理（可改為自己伺服器）
+    try:
+        with open(path, 'rb') as f:
+            response = requests.post(
+                "https://api.imgbb.com/1/upload",
+                params={"key": os.getenv("IMGBB_API_KEY")},
+                files={"image": f}
+            )
+            return response.json()["data"]["url"]
+    except:
+        return None
 
 @app.route("/", methods=['GET'])
 def health_check():
@@ -123,6 +138,20 @@ def handle_text_message(event):
 
     memory = load_memory()
     user_history = memory.get(user_id, [])
+
+    # 讓學生註冊名稱
+    if user_input.startswith("註冊"):
+        name = user_input.replace("註冊", "").strip()
+        memory[user_id] = {"name": name, "history": []}
+        save_memory(memory)
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"✅ {name} 已完成註冊！"))
+        return
+
+    if isinstance(memory.get(user_id), dict):
+        user_name = memory[user_id].get("name", user_id)
+        user_history = memory[user_id].get("history", [])
+    else:
+        user_name = user_id
 
     emotion = detect_emotion(user_input)
 
@@ -150,12 +179,15 @@ def handle_text_message(event):
 
     user_history.append(user_input)
     user_history.append(ai_reply)
-    memory[user_id] = user_history[-10:]
+    if isinstance(memory.get(user_id), dict):
+        memory[user_id]["history"] = user_history[-10:]
+    else:
+        memory[user_id] = user_history[-10:]
     save_memory(memory)
     log_interaction(user_id, user_input, ai_reply, emotion)
 
     if detect_negative_trend(user_id):
-        alert_teacher(user_id)
+        alert_teacher(user_id, user_name)
 
 @handler.add(MessageEvent, message=AudioMessage)
 def handle_audio_message(event):
