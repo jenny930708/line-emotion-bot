@@ -125,25 +125,6 @@ def handle_text_message(event):
     user_id = event.source.user_id
     user_input = event.message.text.strip()
 
-    # 查詢註冊資料
-    if "查詢" in user_input and "註冊" in user_input:
-        students = load_students()
-        for sid, info in students.items():
-            if info.get("line_user_id") == user_id:
-                name = info.get("name")
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(
-                        text=(
-                            f"當然可以，讓我幫您確認一下。您目前的註冊資料包括：\n\n"
-                            f"{sid} {name}\n\n"
-                            "如果有任何其他需要修改的地方，或想查詢其他資訊，請告訴我。"
-                        )
-                    )
-                )
-                return
-
-    # 自然語義解析（修改或刪除）
     if any(x in user_input for x in ["我要修改", "更改學號", "更換姓名"]):
         line_bot_api.reply_message(
             event.reply_token,
@@ -178,12 +159,17 @@ def handle_text_message(event):
             )
         return
 
-    # 註冊或修改流程：註冊/修改 學號 姓名
     if user_input.startswith("註冊") or user_input.startswith("修改"):
         parts = user_input.split()
         if len(parts) == 3:
             _, sid, name = parts
             students = load_students()
+
+            # 先刪除原有資料
+            for old_sid in list(students.keys()):
+                if students[old_sid].get("line_user_id") == user_id:
+                    del students[old_sid]
+
             students[sid] = {
                 "name": name,
                 "line_user_id": user_id,
@@ -204,8 +190,13 @@ def handle_text_message(event):
 
     # 若尚未註冊則提醒
     students = load_students()
-    registered = any(info["line_user_id"] == user_id for info in students.values())
-    if not registered:
+    registered_sid = None
+    for sid, info in students.items():
+        if info["line_user_id"] == user_id:
+            registered_sid = sid
+            break
+
+    if not registered_sid:
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
@@ -219,6 +210,14 @@ def handle_text_message(event):
         )
         return
 
+    # 查詢註冊資訊
+    if "查詢" in user_input and "註冊" in user_input:
+        student = students[registered_sid]
+        reply = f"當然可以，讓我幫您確認一下。您目前的註冊資料包括：\n\n{registered_sid} {student['name']}\n\n如果有任何其他需要修改的地方，或想查詢其他資訊，請告訴我。"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+        return
+
+    # 情緒回應主體
     memory = load_memory()
     user_history = memory.get(user_id, [])
 
