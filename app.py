@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage, FollowEvent
 from utils import detect_emotion, suggest_music
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -104,6 +104,13 @@ def callback():
     except InvalidSignatureError:
         abort(400)
     return 'OK'
+
+@handler.add(FollowEvent)
+def handle_follow(event):
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text="🎓 歡迎加入情緒偵測 AI！\n請輸入你的學號與姓名來完成註冊\n格式：註冊 學號 姓名")
+    )
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
