@@ -129,10 +129,49 @@ def handle_follow(event):
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_id = event.source.user_id
+    user_input = event.message.text.strip().lower()
+
+    # 自然語義解析（修改或刪除）
+    if any(x in user_input for x in ["我要修改", "更改學號", "更換姓名"]):
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text=(
+                    "✏️ 請使用以下格式重新註冊：
+"
+                    "修改 學號 姓名
+"
+                    "例如：修改 A1111111 王小明"
+                )
+            )
+        )
+        return
+
+    if any(x in user_input for x in ["我要刪除", "刪除註冊", "取消註冊"]):
+        students = load_students()
+        found = False
+        for sid in list(students.keys()):
+            if students[sid].get("line_user_id") == user_id:
+                del students[sid]
+                found = True
+                break
+        save_students(students)
+        if found:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="🗑️ 已刪除您的註冊紀錄，如需重新使用請再次註冊。")
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="⚠️ 找不到您的註冊資料，無法刪除。")
+            )
+        return
+    user_id = event.source.user_id
     user_input = event.message.text.strip()
 
-    # 註冊流程：註冊 S1105001 王小明
-    if user_input.startswith("註冊"):
+    # 註冊或修改流程：註冊/修改 學號 姓名 S1105001 王小明
+    if user_input.startswith("註冊") or user_input.startswith("修改"):
         parts = user_input.split()
         if len(parts) == 3:
             _, sid, name = parts
