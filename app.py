@@ -108,13 +108,14 @@ def callback():
 @handler.add(FollowEvent)
 def handle_follow(event):
     line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(
-    text=(
-        "🎓 歡迎加入情緒偵測 AI！\n"
-        "請輸入你的學號與姓名來完成註冊\n"
-        "格式：註冊 學號 姓名\n"
-        "例如：註冊 A1111111 王小明"
+    event.reply_token,
+    TextSendMessage(
+        text=(
+            "🎓 歡迎加入情緒偵測 AI！\n"
+            "請輸入你的學號與姓名來完成註冊\n"
+            "格式：註冊 學號 姓名\n"
+            "例如：註冊 F1106001 張韻蓁"
+        )
     )
 )
 
