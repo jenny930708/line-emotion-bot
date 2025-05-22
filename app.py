@@ -62,7 +62,6 @@ def save_students(data):
 
 def check_emotion_alert(user_id):
     emotion_count = {"sad": 0, "anger": 0, "fear": 0}
-    logs = []
     if not os.path.exists(LOG_FILE):
         return False
     with open(LOG_FILE, encoding="utf-8") as f:
@@ -110,21 +109,39 @@ def handle_follow(event):
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-    text=(
-        "🎓 歡迎加入情緒偵測 AI！"
-        "請輸入你的學號與姓名來完成註冊或修改或刪除"
-        "格式：註冊 學號 姓名"
-        "      修改 學號 姓名"
-        "      刪除 學號 姓名"
-        "例如：註冊 A1111111 王小明"
-    )
-)
+            text=(
+                "🎓 歡迎加入情緒偵測 AI！\n"
+                "請輸入你的學號與姓名來完成註冊或修改或刪除\n"
+                "格式：註冊 學號 姓名\n"
+                "      修改 學號 姓名\n"
+                "      刪除 學號 姓名\n"
+                "例如：註冊 A1111111 王小明"
+            )
+        )
     )
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_id = event.source.user_id
-    user_input = event.message.text.strip().lower()
+    user_input = event.message.text.strip()
+
+    # 查詢註冊資料
+    if "查詢" in user_input and "註冊" in user_input:
+        students = load_students()
+        for sid, info in students.items():
+            if info.get("line_user_id") == user_id:
+                name = info.get("name")
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(
+                        text=(
+                            f"當然可以，讓我幫您確認一下。您目前的註冊資料包括：\n\n"
+                            f"{sid} {name}\n\n"
+                            "如果有任何其他需要修改的地方，或想查詢其他資訊，請告訴我。"
+                        )
+                    )
+                )
+                return
 
     # 自然語義解析（修改或刪除）
     if any(x in user_input for x in ["我要修改", "更改學號", "更換姓名"]):
@@ -132,8 +149,8 @@ def handle_text_message(event):
             event.reply_token,
             TextSendMessage(
                 text=(
-                    "✏️ 請使用以下格式重新註冊："
-                    "修改 學號 姓名"
+                    "✏️ 請使用以下格式重新註冊：\n"
+                    "修改 學號 姓名\n"
                     "例如：修改 A1111111 王小明"
                 )
             )
@@ -160,10 +177,8 @@ def handle_text_message(event):
                 TextSendMessage(text="⚠️ 找不到您的註冊資料，無法刪除。")
             )
         return
-    user_id = event.source.user_id
-    user_input = event.message.text.strip()
 
-    # 註冊或修改流程：註冊/修改 學號 姓名 S1105001 王小明
+    # 註冊或修改流程：註冊/修改 學號 姓名
     if user_input.startswith("註冊") or user_input.startswith("修改"):
         parts = user_input.split()
         if len(parts) == 3:
@@ -194,13 +209,13 @@ def handle_text_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-    text=(
-         "🎓 您尚未註冊，請輸入："
-         "註冊 學號 姓名"
-         "以完成登入"
-         "例如 : 註冊 A1111111 王小明"
-    )
-)
+                text=(
+                    "🎓 您尚未註冊，請輸入：\n"
+                    "註冊 學號 姓名\n"
+                    "以完成登入\n"
+                    "例如 : 註冊 A1111111 王小明"
+                )
+            )
         )
         return
 
