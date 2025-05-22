@@ -141,6 +141,16 @@ def handle_text_message(event):
             )
             return
 
+    # 若尚未註冊則提醒
+    students = load_students()
+    registered = any(info["line_user_id"] == user_id for info in students.values())
+    if not registered:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="🎓 您尚未註冊，請輸入：\n註冊 學號 姓名\n以完成登入")
+        )
+        return
+
     memory = load_memory()
     user_history = memory.get(user_id, [])
 
