@@ -136,9 +136,16 @@ def handle_text_message(event):
             return
         else:
             line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請輸入正確格式：註冊 學號 姓名")
-            )
+    event.reply_token,
+    TextSendMessage(
+        text=(
+            "🎓 您尚未註冊，請輸入：\n"
+            "註冊 學號 姓名\n"
+            "以完成登入\n"
+            "例如 : 註冊 A1111111 王小明"
+        )
+    )
+)
             return
 
     # 若尚未註冊則提醒
