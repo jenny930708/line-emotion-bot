@@ -34,6 +34,10 @@ if not os.path.exists(LOG_FILE):
     with open(LOG_FILE, "w") as f:
         pass
 
+if not os.path.exists(STUDENTS_FILE):
+    with open(STUDENTS_FILE, "w") as f:
+        json.dump({}, f)
+
 def load_memory():
     with open(MEMORY_FILE, "r") as f:
         return json.load(f)
@@ -51,6 +55,10 @@ def load_students():
         with open(STUDENTS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
+def save_students(data):
+    with open(STUDENTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 def check_emotion_alert(user_id):
     emotion_count = {"sad": 0, "anger": 0, "fear": 0}
@@ -76,10 +84,11 @@ def notify_teacher(user_id):
     students = load_students()
     for sid, info in students.items():
         if info["line_user_id"] == user_id:
-            teacher_id = info["teacher_id"]
+            teacher_id = info.get("teacher_id", None)
             student_name = info["name"]
-            message = f"⚠️ [警示] 您的學生 {student_name}（{sid}）最近 7 次互動中出現過多負面情緒，請特別關注。"
-            line_bot_api.push_message(teacher_id, TextSendMessage(text=message))
+            if teacher_id:
+                message = f"⚠️ [警示] 您的學生 {student_name}（{sid}）最近 7 次互動中出現過多負面情緒，請特別關注。"
+                line_bot_api.push_message(teacher_id, TextSendMessage(text=message))
             break
 
 @app.route("/", methods=['GET'])
@@ -99,7 +108,31 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_id = event.source.user_id
-    user_input = event.message.text
+    user_input = event.message.text.strip()
+
+    # 註冊流程：註冊 S1105001 王小明
+    if user_input.startswith("註冊"):
+        parts = user_input.split()
+        if len(parts) == 3:
+            _, sid, name = parts
+            students = load_students()
+            students[sid] = {
+                "name": name,
+                "line_user_id": user_id,
+                "teacher_id": ""
+            }
+            save_students(students)
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=f"✅ 已註冊學號 {sid}，姓名 {name}。請開始使用情緒偵測服務。")
+            )
+            return
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請輸入正確格式：註冊 學號 姓名")
+            )
+            return
 
     memory = load_memory()
     user_history = memory.get(user_id, [])
