@@ -124,9 +124,10 @@ def handle_follow(event):
 def handle_text_message(event):
     user_id = event.source.user_id
     user_input = event.message.text.strip()
-    students = load_students()
 
-    if user_input.startswith("查詢"):
+    # 查詢註冊資料
+    if "查詢註冊" in user_input or "查詢我的註冊" in user_input:
+        students = load_students()
         for sid, info in students.items():
             if info.get("line_user_id") == user_id:
                 line_bot_api.reply_message(
@@ -141,11 +142,51 @@ def handle_text_message(event):
                 )
                 return
 
+    # 自然語義解析（修改或刪除）
+    if any(x in user_input for x in ["我要修改", "更改學號", "更換姓名"]):
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text=(
+                    "✏️ 請使用以下格式重新註冊：\n"
+                    "修改 學號 姓名\n"
+                    "例如：修改 A1111111 王小明"
+                )
+            )
+        )
+        return
+
+    if any(x in user_input for x in ["我要刪除", "刪除註冊", "取消註冊"]):
+        students = load_students()
+        found = False
+        for sid in list(students.keys()):
+            if students[sid].get("line_user_id") == user_id:
+                del students[sid]
+                found = True
+                break
+        save_students(students)
+        if found:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="🗑️ 已刪除您的註冊紀錄，如需重新使用請再次註冊。")
+            )
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="⚠️ 找不到您的註冊資料，無法刪除。")
+            )
+        return
+
     # 註冊或修改流程
     if user_input.startswith("註冊") or user_input.startswith("修改"):
         parts = user_input.split()
         if len(parts) == 3:
             _, sid, name = parts
+            students = load_students()
+            # 刪除舊的 line_user_id 對應
+            for key, val in list(students.items()):
+                if val.get("line_user_id") == user_id:
+                    del students[key]
             students[sid] = {
                 "name": name,
                 "line_user_id": user_id,
@@ -157,8 +198,15 @@ def handle_text_message(event):
                 TextSendMessage(text=f"✅ 已註冊學號 {sid}，姓名 {name}。請開始使用情緒偵測服務。")
             )
             return
+        else:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請輸入正確格式：註冊 學號 姓名")
+            )
+            return
 
-    # 查不到學生時提醒註冊
+    # 若尚未註冊則提醒
+    students = load_students()
     registered = any(info["line_user_id"] == user_id for info in students.values())
     if not registered:
         line_bot_api.reply_message(
@@ -225,7 +273,7 @@ def handle_audio_message(event):
         transcript = openai.Audio.transcribe("whisper-1", audio_file, api_key=OPENAI_API_KEY)
         user_input = transcript["text"]
 
-    event.message.text = user_input
+    event.message.text = user_input  # reuse as text
     handle_text_message(event)
 
 if __name__ == "__main__":
