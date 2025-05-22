@@ -109,7 +109,21 @@ def callback():
 def handle_follow(event):
     line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text="🎓 歡迎加入情緒偵測 AI！\n請輸入你的學號與姓名來完成註冊\n格式：註冊 學號 姓名")
+        TextSendMessage(
+    text=(
+        "🎓 歡迎加入情緒偵測 AI！
+"
+        "請輸入你的學號與姓名來完成註冊或修改或刪除
+"
+        "格式：註冊 學號 姓名
+"
+        "        修改 學號 姓名
+"
+        "        刪除 學號 姓名
+"
+        "例如：註冊 A1111111 王小明"
+    )
+)
     )
 
 @handler.add(MessageEvent, message=TextMessage)
@@ -136,16 +150,9 @@ def handle_text_message(event):
             return
         else:
             line_bot_api.reply_message(
-    event.reply_token,
-    TextSendMessage(
-        text=(
-            "🎓 您尚未註冊，請輸入：\n"
-            "註冊 學號 姓名\n"
-            "以完成登入\n"
-            "例如 : 註冊 A1111111 王小明"
-        )
-    )
-)
+                event.reply_token,
+                TextSendMessage(text="請輸入正確格式：註冊 學號 姓名")
+            )
             return
 
     # 若尚未註冊則提醒
@@ -156,13 +163,16 @@ def handle_text_message(event):
             event.reply_token,
             TextSendMessage(
     text=(
-        "🎓 您尚未註冊，請輸入：\n"
-        "註冊 學號 姓名\n"
-        "以完成登入\n"
+        "🎓 您尚未註冊，請輸入：
+"
+        "註冊 學號 姓名
+"
+        "以完成登入
+"
         "例如 : 註冊 A1111111 王小明"
     )
-            )
 )
+        )
         return
 
     memory = load_memory()
