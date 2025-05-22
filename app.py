@@ -124,26 +124,23 @@ def handle_follow(event):
 def handle_text_message(event):
     user_id = event.source.user_id
     user_input = event.message.text.strip()
+    user_input_lower = user_input.lower()
 
     # 查詢註冊資料
-    if "查詢註冊" in user_input or "查詢我的註冊" in user_input:
+    if "查詢" in user_input and "註冊" in user_input:
         students = load_students()
         for sid, info in students.items():
             if info.get("line_user_id") == user_id:
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(
-                        text=(
-                            "📄 讓我幫您確認一下。您目前的註冊資料包括：\n\n"
-                            f"{sid} {info['name']}\n\n"
-                            "如果有任何其他需要修改的地方，或想查詢其他資訊，請告訴我。"
-                        )
-                    )
+                reply = (
+                    "📄 讓我幫您確認一下。您目前的註冊資料包括：\n\n"
+                    f"{sid} {info['name']}\n\n"
+                    "如果有任何其他需要修改的地方，或想查詢其他資訊，請告訴我。"
                 )
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
                 return
 
     # 自然語義解析（修改或刪除）
-    if any(x in user_input for x in ["我要修改", "更改學號", "更換姓名"]):
+    if any(x in user_input_lower for x in ["我要修改", "更改學號", "更換姓名"]):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
@@ -156,7 +153,7 @@ def handle_text_message(event):
         )
         return
 
-    if any(x in user_input for x in ["我要刪除", "刪除註冊", "取消註冊"]):
+    if any(x in user_input_lower for x in ["我要刪除", "刪除註冊", "取消註冊"]):
         students = load_students()
         found = False
         for sid in list(students.keys()):
@@ -177,16 +174,12 @@ def handle_text_message(event):
             )
         return
 
-    # 註冊或修改流程
-    if user_input.startswith("註冊") or user_input.startswith("修改"):
+    # 註冊或修改流程：註冊/修改 學號 姓名
+    if user_input_lower.startswith("註冊") or user_input_lower.startswith("修改"):
         parts = user_input.split()
         if len(parts) == 3:
             _, sid, name = parts
             students = load_students()
-            # 刪除舊的 line_user_id 對應
-            for key, val in list(students.items()):
-                if val.get("line_user_id") == user_id:
-                    del students[key]
             students[sid] = {
                 "name": name,
                 "line_user_id": user_id,
