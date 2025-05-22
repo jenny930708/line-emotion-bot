@@ -161,6 +161,7 @@ def handle_text_message(event):
         "以完成登入\n"
         "例如 : 註冊 A1111111 王小明"
     )
+            )
 )
         return
 
