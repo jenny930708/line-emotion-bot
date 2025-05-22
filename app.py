@@ -1,18 +1,16 @@
 import os
 import json
 from datetime import datetime
-from flask import Flask, request, abort, jsonify
+from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage, ImageSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, AudioMessage
 from utils import detect_emotion, suggest_music
 from dotenv import load_dotenv
 from openai import OpenAI
 import openai
 import tempfile
 import requests
-import matplotlib.pyplot as plt
-from collections import defaultdict, Counter
 
 # 載入環境變數
 load_dotenv()
@@ -22,15 +20,19 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-TEACHER_USER_IDS = os.getenv("TEACHER_USER_IDS", "").split(",")  # 多位導師用逗號分隔
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 MEMORY_FILE = "memory.json"
 LOG_FILE = "logs.txt"
+STUDENTS_FILE = "students.json"
 
 if not os.path.exists(MEMORY_FILE):
     with open(MEMORY_FILE, "w") as f:
         json.dump({}, f)
+
+if not os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "w") as f:
+        pass
 
 def load_memory():
     with open(MEMORY_FILE, "r") as f:
@@ -44,78 +46,41 @@ def log_interaction(user_id, user_input, ai_reply, emotion):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{datetime.now()}] User: {user_id}\nInput: {user_input}\nEmotion: {emotion}\nAI: {ai_reply}\n---\n")
 
-def parse_emotion_logs(user_id):
-    data = defaultdict(list)
+def load_students():
+    if os.path.exists(STUDENTS_FILE):
+        with open(STUDENTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def check_emotion_alert(user_id):
+    emotion_count = {"sad": 0, "anger": 0, "fear": 0}
+    logs = []
     if not os.path.exists(LOG_FILE):
-        return data
+        return False
     with open(LOG_FILE, encoding="utf-8") as f:
-        current_date = None
-        current_user = None
-        for line in f:
-            if line.startswith("["):
-                current_date = datetime.strptime(line[1:20], "%Y-%m-%d %H:%M:%S")
-            elif line.startswith("User: "):
-                current_user = line.strip().split(": ")[-1]
-            elif line.startswith("Emotion:") and current_date and current_user == user_id:
-                emotion = line.strip().split(":")[-1].strip()
-                data[current_date.strftime("%Y-%m-%d")].append(emotion)
-    return data
+        lines = f.readlines()
+    current_user_lines = []
+    for i in range(len(lines)):
+        if f"User: {user_id}" in lines[i]:
+            log_block = lines[i:i+4]
+            current_user_lines.append(log_block)
+    recent_logs = current_user_lines[-7:]
+    for block in recent_logs:
+        for line in block:
+            for emo in emotion_count:
+                if f"Emotion: {emo}" in line:
+                    emotion_count[emo] += 1
+    return sum(emotion_count.values()) >= 5
 
-def detect_negative_trend(user_id):
-    emotion_log = parse_emotion_logs(user_id)
-    recent = list(emotion_log.items())[-7:]  # 過去7天
-    negative_count = 0
-    for _, emotions in recent:
-        for emo in emotions:
-            if emo in ["sad", "anger", "fear"]:
-                negative_count += 1
-    return negative_count >= 5
-
-def generate_emotion_chart(user_id):
-    data = parse_emotion_logs(user_id)
-    day_keys = sorted(data.keys())
-    counts = []
-    for day in day_keys:
-        emotion_counter = Counter(data[day])
-        counts.append(sum(emotion_counter[emo] for emo in ["sad", "anger", "fear"]))
-    plt.figure(figsize=(10, 4))
-    plt.plot(day_keys, counts, marker='o')
-    plt.title("近期負面情緒趨勢")
-    plt.xlabel("日期")
-    plt.ylabel("次數")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    chart_path = f"chart_{user_id}.png"
-    plt.savefig(chart_path)
-    plt.close()
-    return chart_path
-
-def alert_teacher(user_id, student_name):
-    chart_path = generate_emotion_chart(user_id)
-    for teacher_id in TEACHER_USER_IDS:
-        line_bot_api.push_message(
-            teacher_id,
-            TextSendMessage(text=f"⚠️ 學生 {student_name} 最近情緒異常，請關注。")
-        )
-        image_url = upload_image(chart_path)
-        if image_url:
-            line_bot_api.push_message(
-                teacher_id,
-                ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
-            )
-
-def upload_image(path):
-    # 圖片上傳到 Imgur 暫存處理（可改為自己伺服器）
-    try:
-        with open(path, 'rb') as f:
-            response = requests.post(
-                "https://api.imgbb.com/1/upload",
-                params={"key": os.getenv("IMGBB_API_KEY")},
-                files={"image": f}
-            )
-            return response.json()["data"]["url"]
-    except:
-        return None
+def notify_teacher(user_id):
+    students = load_students()
+    for sid, info in students.items():
+        if info["line_user_id"] == user_id:
+            teacher_id = info["teacher_id"]
+            student_name = info["name"]
+            message = f"⚠️ [警示] 您的學生 {student_name}（{sid}）最近 7 次互動中出現過多負面情緒，請特別關注。"
+            line_bot_api.push_message(teacher_id, TextSendMessage(text=message))
+            break
 
 @app.route("/", methods=['GET'])
 def health_check():
@@ -138,20 +103,6 @@ def handle_text_message(event):
 
     memory = load_memory()
     user_history = memory.get(user_id, [])
-
-    # 讓學生註冊名稱
-    if user_input.startswith("註冊"):
-        name = user_input.replace("註冊", "").strip()
-        memory[user_id] = {"name": name, "history": []}
-        save_memory(memory)
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"✅ {name} 已完成註冊！"))
-        return
-
-    if isinstance(memory.get(user_id), dict):
-        user_name = memory[user_id].get("name", user_id)
-        user_history = memory[user_id].get("history", [])
-    else:
-        user_name = user_id
 
     emotion = detect_emotion(user_input)
 
@@ -179,15 +130,12 @@ def handle_text_message(event):
 
     user_history.append(user_input)
     user_history.append(ai_reply)
-    if isinstance(memory.get(user_id), dict):
-        memory[user_id]["history"] = user_history[-10:]
-    else:
-        memory[user_id] = user_history[-10:]
+    memory[user_id] = user_history[-10:]
     save_memory(memory)
     log_interaction(user_id, user_input, ai_reply, emotion)
 
-    if detect_negative_trend(user_id):
-        alert_teacher(user_id, user_name)
+    if check_emotion_alert(user_id):
+        notify_teacher(user_id)
 
 @handler.add(MessageEvent, message=AudioMessage)
 def handle_audio_message(event):
