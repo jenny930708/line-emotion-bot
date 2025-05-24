@@ -40,7 +40,5 @@ def handle_message(event):
     elif "梗圖" in user_message or "音樂" in user_message or "影片" in user_message:
         reply = handle_fun(user_message)
     else:
-        reply = "我是你的AI朋友，可以陪你聊天、說故事、或幫你放鬆一下～"
-輸入：冥想、故事、梗圖、音樂、影片"
-
+        reply = "我是你的AI朋友，可以陪你聊天、說故事、或幫你放鬆一下～\n輸入: 冥想、故事、梗圖、音樂、影片"
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
