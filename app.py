@@ -25,8 +25,10 @@ last_meme_theme = {}
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
-        html = requests.get(url, headers=headers).text
+        # 加入更明確的查詢字詞：用雙引號限定精準 + official mv
+        enhanced_query = f'"{query}" 官方 MV'
+        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(enhanced_query)}"
+        html = requests.get(search_url, headers=headers).text
         match = re.search(r'"url":"/watch\?v=(.{11})"', html)
         if match:
             return f"https://www.youtube.com/watch?v={match.group(1)}"
