@@ -27,7 +27,7 @@ def search_youtube_link(query):
         headers = {"User-Agent": "Mozilla/5.0"}
         search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(search_url, headers=headers).text
-        match = re.search(r'"url":"/watch\\?v=(.{11})"', html)
+        match = re.search(r'"url":"/watch\?v=(.{11})"', html)
         if match:
             return f"https://www.youtube.com/watch?v={match.group(1)}"
     except Exception as e:
@@ -35,34 +35,50 @@ def search_youtube_link(query):
     return "（找不到連結）"
 
 def handle_music_request(user_message):
-    # 將常見語助詞移除
     cleaned = user_message
     for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
         cleaned = cleaned.replace(word, "")
     keywords = cleaned.strip()
 
-    # 若只輸入了歌手（如「周杰倫的」），提示補充歌名
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我想聽哪一首歌，例如：周杰倫的青花瓷")
 
-    # 改進搜尋查詢，加入 "official" 及使用雙引號
     enhanced_query = f'"{keywords}" 官方 MV'
     link = search_youtube_link(enhanced_query)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\\n{link}")
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
 
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
-    if artist_match:
-        artist = artist_match.group(2)
-        common_titles = ["代表作", "經典歌曲", "熱門歌曲", "必聽歌曲", "傳唱歌曲"]
+    if not artist_match:
+        return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
+
+    artist = artist_match.group(2)
+    search_query = f"{artist} 熱門歌曲 官方 MV"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(search_query)}"
+        res = requests.get(url, headers=headers)
+        video_ids = re.findall(r'"url":"/watch\?v=(.{11})"', res.text)
+        seen = set()
+        links = []
+        for vid in video_ids:
+            if vid not in seen:
+                seen.add(vid)
+                links.append(f"https://www.youtube.com/watch?v={vid}")
+            if len(links) >= 5:
+                break
+
+        if not links:
+            return TextSendMessage(text="找不到熱門歌曲影片 😢")
+
         msg = f"這裡是為你推薦的「{artist}」熱門歌曲：\n\n"
-        for idx in range(1, 6):
-            fake_title = f"{artist} {random.choice(common_titles)} {idx}"
-            link = search_youtube_link(fake_title)
-            msg += f"{idx}. {fake_title} 👉 {link}\n"
-        msg += "\n以上推薦為自動搜尋結果，如想指定歌曲可直接輸入『我想聽 + 歌名』"
+        for idx, link in enumerate(links, 1):
+            msg += f"{idx}. 👉 {link}\n"
+
         return TextSendMessage(text=msg)
-    return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
+
+    except Exception as e:
+        return TextSendMessage(text=f"⚠️ 無法推薦歌曲：{str(e)}")
 
 def generate_story_by_topic(topic):
     try:
@@ -117,7 +133,6 @@ def handle_fun_image(user_message, user_id):
         theme = f"{matched_theme}梗圖" if matched_theme else "梗圖"
         last_meme_theme[user_id] = theme
 
-    # 如果有提到「三張」「多張」「幾張」「3張」，就多抓幾張
     if re.search(r"(三|3|幾|多).*張", user_message):
         results = []
         for _ in range(3):
@@ -126,13 +141,12 @@ def handle_fun_image(user_message, user_id):
                 results.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
         return results if results else [TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")]
 
-    # 否則回傳單張
     image_url = search_meme_image_by_yahoo(theme)
     if image_url:
         return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
     else:
         return TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")
-        
+
 @app.route("/")
 def health_check():
     return "OK"
@@ -165,16 +179,13 @@ def handle_message(event):
         reply = handle_music_request(user_message)
     elif "梗圖" in user_message or "再來一張" in user_message or "三張" in user_message or "3張" in user_message:
         reply = handle_fun_image(user_message, user_id)
-
-        # ✅ 如果是多張圖，使用 push_message 一張一張傳
         if isinstance(reply, list):
             for r in reply:
                 line_bot_api.push_message(user_id, r)
-            return  # ❗重要：避免繼續走到 reply_message
+            return
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
-    # ✅ 單一訊息統一回覆
     line_bot_api.reply_message(event.reply_token, reply)
 
 if __name__ == "__main__":
