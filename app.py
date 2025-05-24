@@ -1,3 +1,4 @@
+
 import os
 import re
 import random
@@ -21,12 +22,13 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ✅ 用來記住每位使用者最近看的梗圖主題
 last_meme_theme = {}
 
+
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(url, headers=headers).text
-        video_ids = re.findall(r'"url":"/watch\\?v=(.{11})"', html)
+        video_ids = re.findall(r'"url":"/watch\?v=(.{11})"', html)
         seen = set()
         for vid in video_ids:
             if vid not in seen:
@@ -52,7 +54,8 @@ def handle_music_request(user_message):
         search_query = f'"{keywords}" 官方 MV site:youtube.com'
 
     link = search_youtube_link(search_query)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：{link}")
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：
+{link}")
 
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
