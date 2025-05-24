@@ -111,18 +111,28 @@ def handle_fun_image(user_message, user_id):
     theme_keywords = ["動物", "狗", "貓", "熊", "老虎", "貓咪", "狗狗", "鯊魚", "食物", "人類", "日常", "漫畫", "梗"]
     matched_theme = next((word for word in theme_keywords if word in user_message), None)
 
-    if "再來一張" in user_message:
+    if "再來一張" in user_message or "再一張" in user_message:
         theme = last_meme_theme.get(user_id, "梗圖")
     else:
         theme = f"{matched_theme}梗圖" if matched_theme else "梗圖"
         last_meme_theme[user_id] = theme
 
+    # 如果有提到「三張」「多張」「幾張」「3張」，就多抓幾張
+    if re.search(r"(三|3|幾|多).*張", user_message):
+        results = []
+        for _ in range(3):
+            image_url = search_meme_image_by_yahoo(theme)
+            if image_url:
+                results.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
+        return results if results else [TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")]
+
+    # 否則回傳單張
     image_url = search_meme_image_by_yahoo(theme)
     if image_url:
         return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
     else:
         return TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")
-
+        
 @app.route("/")
 def health_check():
     return "OK"
@@ -153,11 +163,18 @@ def handle_message(event):
         reply = TextSendMessage(text="你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻")
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
-    elif "梗圖" in user_message or "再來一張" in user_message:
+    elif "梗圖" in user_message or "再來一張" in user_message or "三張" in user_message or "3張" in user_message:
         reply = handle_fun_image(user_message, user_id)
+
+        # ✅ 如果是多張圖，使用 push_message 一張一張傳
+        if isinstance(reply, list):
+            for r in reply:
+                line_bot_api.push_message(user_id, r)
+            return  # ❗重要：避免繼續走到 reply_message
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
+    # ✅ 單一訊息統一回覆
     line_bot_api.reply_message(event.reply_token, reply)
 
 if __name__ == "__main__":
