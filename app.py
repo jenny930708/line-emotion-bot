@@ -10,16 +10,13 @@ from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 from agents.fun_agent import handle_fun, handle_music_request
 
-# 載入環境變數
 load_dotenv()
 app = Flask(__name__)
 
-# 初始化 LINE BOT 與 OpenAI
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# GPT 聊天回應
 def chat_with_gpt(user_message):
     try:
         response = openai.ChatCompletion.create(
@@ -30,15 +27,13 @@ def chat_with_gpt(user_message):
             ]
         )
         return response['choices'][0]['message']['content']
-    except Exception:
-        return "目前我有點累了，暫時無法聊天 🥺，可以稍後再試一次嗎？"
+    except Exception as e:
+        return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
-# 健康檢查路由
 @app.route("/")
 def health_check():
     return "OK"
 
-# LINE webhook 入口
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
@@ -49,7 +44,6 @@ def callback():
         abort(400)
     return "OK"
 
-# 訊息處理主邏輯
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
@@ -68,12 +62,4 @@ def handle_message(event):
     else:
         reply = chat_with_gpt(user_message)
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply)
-    )
-
-# 讓 Render 偵測 port
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
