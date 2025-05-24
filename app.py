@@ -25,11 +25,9 @@ last_meme_theme = {}
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        # 加入更明確的查詢字詞：用雙引號限定精準 + official mv
-        enhanced_query = f'"{query}" 官方 MV'
-        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(enhanced_query)}"
+        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(search_url, headers=headers).text
-        match = re.search(r'"url":"/watch\?v=(.{11})"', html)
+        match = re.search(r'"url":"/watch\\?v=(.{11})"', html)
         if match:
             return f"https://www.youtube.com/watch?v={match.group(1)}"
     except Exception as e:
@@ -37,14 +35,20 @@ def search_youtube_link(query):
     return "（找不到連結）"
 
 def handle_music_request(user_message):
-    keywords = user_message
+    # 將常見語助詞移除
+    cleaned = user_message
     for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
-        keywords = keywords.replace(word, "")
-    keywords = keywords.strip()
-    if not keywords:
-        keywords = "熱門音樂"
-    link = search_youtube_link(keywords)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
+        cleaned = cleaned.replace(word, "")
+    keywords = cleaned.strip()
+
+    # 若只輸入了歌手（如「周杰倫的」），提示補充歌名
+    if re.match(r".+的$", keywords):
+        return TextSendMessage(text="請告訴我想聽哪一首歌，例如：周杰倫的青花瓷")
+
+    # 改進搜尋查詢，加入 "official" 及使用雙引號
+    enhanced_query = f'"{keywords}" 官方 MV'
+    link = search_youtube_link(enhanced_query)
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\\n{link}")
 
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
