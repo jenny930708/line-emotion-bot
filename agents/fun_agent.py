@@ -1,34 +1,29 @@
 import os
 import random
 import requests
+from bs4 import BeautifulSoup
 from linebot.models import TextSendMessage, ImageSendMessage
 
-# 搜尋 Google 圖片 API
+# Yahoo 圖片搜尋（不需 API Key）
 def search_meme_image(query="梗圖"):  # 預設為「梗圖」
-    api_key = os.getenv("GOOGLE_API_KEY")
-    cse_id = os.getenv("GOOGLE_CSE_CX")
-
-    if not api_key or not cse_id:
-        return None
-
-    url = f"https://www.googleapis.com/customsearch/v1?q={query}&cx={cse_id}&searchType=image&key={api_key}"
-
     try:
-        res = requests.get(url)
-        res.raise_for_status()
-        data = res.json()
-        items = data.get("items", [])
-        if items:
-            return random.choice(items)["link"]
+        url = f"https://tw.images.search.yahoo.com/search/images?p={query}"
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "html.parser")
+        img_tags = soup.find_all("img")
+        img_urls = [img["src"] for img in img_tags if img.get("src", "").startswith("http")]
+        return random.choice(img_urls) if img_urls else None
     except Exception as e:
-        print(f"[錯誤] 圖片搜尋失敗：{e}")
-
-    return None
+        print("Yahoo 圖片搜尋錯誤：", e)
+        return None
 
 # 處理娛樂請求
 def handle_fun(user_message):
     if "梗圖" in user_message:
-        image_url = search_meme_image("梗圖")  # 預設搜尋詞
+        image_url = search_meme_image(user_message)  # 用使用者輸入作為關鍵字搜尋
         if image_url:
             return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
         else:
