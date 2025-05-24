@@ -1,9 +1,7 @@
 {
-  "users": {},
-  "preferences_template": {
-    "mood": "",
-    "preferred_music": "",
-    "preferred_story_genre": "",
-    "last_interaction": ""
-  }
+    "users": {},
+    "stories": {},
+    "emotions": {},
+    "music_preferences": {},
+    "meme_preferences": {}
 }
