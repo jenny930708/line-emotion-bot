@@ -63,7 +63,7 @@ def search_meme_image(query):
 
 def handle_fun(user_message):
     if "梗圖" in user_message:
-        keywords = ["台灣梗圖", "迷因圖", "搞笑圖片", "厭世梗圖"]
+       keywords = ["ptt 梗圖", "迷因", "台灣搞笑圖"]
         image_url = search_meme_image(random.choice(keywords))
         if image_url:
             return {
