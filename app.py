@@ -1,4 +1,3 @@
-
 import os
 import re
 import random
@@ -177,6 +176,23 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token, theme_reply)
         return
     else:
+        if \"推薦\" in user_message and \"歌\" in user_message:
+            reply = auto_recommend_artist(user_message)
+        elif user_message in story_topics:
+            reply = TextSendMessage(text=generate_story_by_topic(user_message))
+        elif \"說故事\" in user_message or \"講故事\" in user_message or \"故事\" in user_message:
+            reply = TextSendMessage(text=\"你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻\")
+        elif \"聽\" in user_message or \"播放\" in user_message:
+            reply = handle_music_request(user_message)
+        elif \"梗圖\" in user_message or \"再來一張\" in user_message or \"三張\" in user_message or \"3張\" in user_message:
+            reply = handle_fun_image(user_message, user_id)
+            if isinstance(reply, list):
+                for r in reply:
+                    line_bot_api.push_message(user_id, r)
+                return
+        else:
+            reply = TextSendMessage(text=chat_with_gpt(user_message))
+        line_bot_api.reply_message(event.reply_token, reply)
 
     user_message = event.message.text.strip()
     user_id = event.source.user_id
