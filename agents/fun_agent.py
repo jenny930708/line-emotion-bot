@@ -4,7 +4,6 @@ import random
 import requests
 from bs4 import BeautifulSoup
 from linebot.models import TextSendMessage, ImageSendMessage
-from googleapiclient.discovery import build
 
 # Yahoo 梗圖搜尋
 def search_meme_image_by_yahoo(query="梗圖"):
@@ -21,41 +20,18 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print(f"[Yahoo 搜圖錯誤] {e}")
     return None
 
-# YouTube 音樂搜尋
-def search_youtube_music(query):
-    api_key = os.getenv("YOUTUBE_API_KEY")
-    if not api_key or not query:
-        return None
-    try:
-        youtube = build("youtube", "v3", developerKey=api_key)
-        request = youtube.search().list(
-            q=query,
-            part="snippet",
-            maxResults=5,
-            type="video"
-        )
-        response = request.execute()
-        items = response.get("items", [])
-        if items:
-            video_id = random.choice(items)["id"]["videoId"]
-            return f"https://www.youtube.com/watch?v={video_id}"
-    except Exception as e:
-        print(f"[YouTube 搜尋錯誤] {e}")
-    return None
+# 音樂需求處理：改為回傳 YouTube 搜尋連結
 
-# 處理音樂需求
 def handle_music_request(user_message):
     if "音樂" in user_message or "歌" in user_message:
-        keywords = ["周杰倫", "林俊傑", "白噪音", "水晶音樂", "輕音樂", "放鬆", "鋼琴", "冥想", "療癒", "純音樂"]
-        query = next((word for word in keywords if word in user_message), "放鬆音樂")
-
-        video_url = search_youtube_music(query)
-        if video_url:
-            return TextSendMessage(text=f"🎵 這是我幫你找的 {query} 音樂影片：{video_url}")
+        query_keywords = ["周杰倫", "林俊傑", "白噪音", "水晶音樂", "鋼琴", "冥想", "輕音樂", "放鬆", "療癒"]
+        query = next((kw for kw in query_keywords if kw in user_message), None)
+        if query:
+            search_url = f"https://www.youtube.com/results?search_query={query}+音樂"
+            return TextSendMessage(text=f"🎵 這是你可以試試聽的 {query} 音樂搜尋：{search_url}")
         else:
-            return TextSendMessage(text="抱歉，我目前找不到相關的音樂影片 😥")
-
-    return TextSendMessage(text="你可以說「我想聽周杰倫的歌」、「來點水晶音樂」等等～")
+            return TextSendMessage(text="你想聽什麼風格的音樂呢？舉例：周杰倫、白噪音、水晶音樂等。")
+    return TextSendMessage(text="如果你想聽音樂，可以說「我想聽輕音樂」或「來點周杰倫的歌」喔～")
 
 # 處理娛樂需求（梗圖、影片）
 def handle_fun(user_message):
@@ -74,6 +50,6 @@ def handle_fun(user_message):
         return TextSendMessage(text="這支短影片讓你笑一笑：https://www.youtube.com/shorts/abc123xyz")
 
     elif "音樂" in user_message:
-        return TextSendMessage(text=handle_music_request(user_message))
+        return handle_music_request(user_message)
 
     return TextSendMessage(text="想放鬆一下嗎？你可以說：播放音樂、搞笑影片、梗圖等等喔！")
