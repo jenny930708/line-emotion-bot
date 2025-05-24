@@ -80,9 +80,9 @@ def handle_message(event):
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😥")
 
-    elif "音樂" in user_message or "影片" in user_message:
-        reply = handle_fun(user_message)
-
+    elif "音樂" in user_message or "歌曲" in user_message or "聽" in user_message:
+    reply = TextSendMessage(text=handle_music_request(user_message))
+    
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
