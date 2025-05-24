@@ -91,7 +91,7 @@ def handle_message(event):
         elif "故事" in user_message:
             reply = TextSendMessage(text=handle_story(user_message, user_id))
         elif "梗圖" in user_message:
-            keywords = ["療癒梗圖", "心情不好梗圖", "搞笑梗圖", "中文梗圖"]
+            keywords = ["meme", "搞笑圖", "中文梗圖", "爆笑圖", "梗圖"]
             image_url = search_meme_image(random.choice(keywords))
             if image_url:
                 reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
