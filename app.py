@@ -1,6 +1,7 @@
 import os
 import random
 import requests
+import urllib.parse
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -47,37 +48,33 @@ def search_meme_image_by_yahoo(query="梗圖"):
     return None
 
 def handle_music_request(user_message):
-    search_terms = {
-        "周杰倫": "周杰倫 音樂",
-        "林俊傑": "林俊傑 歌曲",
-        "白噪音": "white noise music",
-        "輕音樂": "relaxing instrumental music",
-        "水晶音樂": "crystal healing music"
-    }
+    # 移除常見詞彙，只留下音樂關鍵字
+    keywords = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
 
-    for keyword, query in search_terms.items():
-        if keyword in user_message:
-            return TextSendMessage(text=search_youtube_music(query))
+    # 若沒輸入關鍵字就使用預設列表
+    if not keywords:
+        default_choices = [
+            "chill music playlist",
+            "happy music",
+            "focus study music",
+            "lofi chillhop",
+            "ambient relaxing music"
+        ]
+        keywords = random.choice(default_choices)
 
-    default_choices = [
-        "chill music playlist",
-        "happy music",
-        "focus study music",
-        "lofi chillhop",
-        "ambient relaxing music"
-    ]
-    return TextSendMessage(text=search_youtube_music(random.choice(default_choices)))
+    query = urllib.parse.quote(keywords)
+    search_url = f"https://www.youtube.com/results?search_query={query}"
 
-def search_youtube_music(query):
+    # 嘗試取得第一個影片連結
     try:
-        search_url = f"https://www.youtube.com/results?search_query={requests.utils.quote(query)}"
         headers = {"User-Agent": "Mozilla/5.0"}
         html = requests.get(search_url, headers=headers).text
         soup = BeautifulSoup(html, "html.parser")
         for a in soup.select("a"):
             href = a.get("href")
             if href and href.startswith("/watch?v="):
-                return f"🎵 這是我為你挑選的音樂： https://www.youtube.com{href}"
+                full_url = f"https://www.youtube.com{href}"
+                return TextSendMessage(text=f"🎵 這是我為你找到的音樂：\n{full_url}")
     except Exception as e:
         print("搜尋 YouTube 音樂時出錯：", e)
     return "抱歉，目前找不到合適的音樂影片 😢"
