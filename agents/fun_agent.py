@@ -24,14 +24,15 @@ def search_meme_image_by_yahoo(query="梗圖"):
 
 def handle_music_request(user_message):
     if "音樂" in user_message or "歌" in user_message:
-        query_keywords = ["周杰倫", "林俊傑", "白噪音", "水晶音樂", "鋼琴", "冥想", "輕音樂", "放鬆", "療癒"]
-        query = next((kw for kw in query_keywords if kw in user_message), None)
-        if query:
-            search_url = f"https://www.youtube.com/results?search_query={query}+音樂"
-            return TextSendMessage(text=f"🎵 這是你可以試試聽的 {query} 音樂搜尋：{search_url}")
-        else:
-            return TextSendMessage(text="你想聽什麼風格的音樂呢？舉例：周杰倫、白噪音、水晶音樂等。")
-    return TextSendMessage(text="如果你想聽音樂，可以說「我想聽輕音樂」或「來點周杰倫的歌」喔～")
+        keywords = ["周杰倫", "林俊傑", "白噪音", "水晶音樂", "輕音樂", "放鬆", "鋼琴", "冥想", "療癒", "純音樂"]
+        query = next((kw for kw in keywords if kw in user_message), None)
+        if not query:
+            return TextSendMessage(text="請告訴我你想聽什麼音樂，例如：周杰倫、白噪音、水晶音樂等。")
+
+        youtube_search_link = f"https://www.youtube.com/results?search_query={query}+音樂"
+        return TextSendMessage(text=f"🎵 這是我幫你找的 {query} 音樂搜尋結果：\n{youtube_search_link}")
+
+    return TextSendMessage(text="你可以說「我想聽周杰倫的歌」、「來點放鬆音樂」等等喔～")
 
 # 處理娛樂需求（梗圖、影片）
 def handle_fun(user_message):
