@@ -1,10 +1,19 @@
 from linebot.models import TextSendMessage, ImageSendMessage
+import random
+
+# ✅ 放上你自己上傳到 Imgur、GitHub、或圖片 CDN 的圖檔連結
+MEME_IMAGES = [
+    "https://i.imgur.com/Lbm90xz.png",  # 再晚我就要生氣了（你上傳圖）
+    "https://i.imgur.com/Ym4TPrd.png",  # 我明明這麼可愛（你上傳圖）
+    "https://i.imgur.com/S1yXD8u.png",  # 社畜都一樣（你上傳圖）
+]
 
 def handle_fun(user_message):
     if "梗圖" in user_message:
+        image_url = random.choice(MEME_IMAGES)
         return ImageSendMessage(
-            original_content_url="https://i.imgur.com/Jt6plWY.jpeg",
-            preview_image_url="https://i.imgur.com/Jt6plWY.jpeg"
+            original_content_url=image_url,
+            preview_image_url=image_url
         )
     elif "音樂" in user_message:
         return TextSendMessage(text="這首歌也許能振奮你的心情：https://www.youtube.com/watch?v=ZbZSe6N_BXs")
