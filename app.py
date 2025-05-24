@@ -98,7 +98,7 @@ def handle_message(event):
         reply = auto_recommend_artist(user_message)
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
-    elif "梗圖" in user_message:
+    elif "梗圖" in user_message or "再來一張" in user_message or "換一張" in user_message or "再給我一張" in user_message:
         image_url = search_meme_image_by_yahoo()
         if image_url:
             reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
