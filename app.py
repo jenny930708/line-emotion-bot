@@ -4,22 +4,19 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from dotenv import load_dotenv
-from openai import OpenAI  # ✅ 新版 openai 套件用法
+from openai import OpenAI
 
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 from agents.fun_agent import handle_fun, handle_music_request
 
-# 載入環境變數
 load_dotenv()
 app = Flask(__name__)
 
-# 初始化 LINE Bot 與 OpenAI Client
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # ✅ 新寫法
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# GPT 聊天邏輯（新版 openai 語法）
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -53,7 +50,7 @@ def handle_message(event):
     user_id = event.source.user_id
 
     if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
-        reply = "聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM"
+        reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
     elif "我想聽" in user_message and "歌" in user_message:
         reply = handle_music_request(user_message)
     elif "冥想" in user_message or "靜心" in user_message:
@@ -63,9 +60,9 @@ def handle_message(event):
     elif "梗圖" in user_message or "音樂" in user_message or "影片" in user_message:
         reply = handle_fun(user_message)
     else:
-        reply = chat_with_gpt(user_message)
+        reply = TextSendMessage(text=chat_with_gpt(user_message))
 
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+    line_bot_api.reply_message(event.reply_token, reply)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
