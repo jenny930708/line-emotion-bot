@@ -21,30 +21,26 @@ def search_meme_image_by_yahoo(query="梗圖"):
 
 # 音樂需求處理：包含關鍵字對應與隨機播放
 def handle_music_request(user_message):
-    # 根據使用者的需求推薦特定音樂
     music_suggestions = {
-        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",  # 周杰倫經典
+        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",
         "林俊傑": "https://www.youtube.com/watch?v=Q9CSj5L8RNI",
         "白噪音": "https://www.youtube.com/watch?v=q76bMs-NwRk",
-        "鋼琴": "https://www.youtube.com/watch?v=4Tr0otuiQuU",
         "水晶": "https://www.youtube.com/watch?v=C2N1wSkCjZ8",
         "輕音樂": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
         "放鬆": "https://www.youtube.com/watch?v=1ZYbU82GVz4",
-        "睡覺": "https://www.youtube.com/watch?v=61bLqu6okpY"
+        "鋼琴": "https://www.youtube.com/watch?v=4Tr0otuiQuU",
     }
 
     for keyword, url in music_suggestions.items():
         if keyword in user_message:
             return f"🎵 這是我為你挑選的 {keyword} 音樂，希望你會喜歡：{url}"
 
-    # 如果沒偵測到特定需求，回傳隨機一首音樂
     fallback_music = [
         "https://www.youtube.com/watch?v=ZbZSe6N_BXs",
         "https://www.youtube.com/watch?v=UfcAVejslrU",
         "https://www.youtube.com/watch?v=5qap5aO4i9A"
     ]
     return f"🎵 這首音樂也許能陪伴你現在的心情：{random.choice(fallback_music)}"
-
 
 # 梗圖、音樂、影片回覆
 def handle_fun(user_message):
