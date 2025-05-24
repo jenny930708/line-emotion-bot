@@ -6,7 +6,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from dotenv import load_dotenv
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
-from agents.fun_agent import handle_fun
+from agents.fun_agent import handle_fun, handle_music_request
 
 load_dotenv()
 app = Flask(__name__)
@@ -33,17 +33,22 @@ def handle_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
 
-    if "冥想" in user_message or "靜心" in user_message:
+    if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
+        reply = "聽起來你今天過得不太好，我在這裡陪你。
+可以聽聽這段音樂放鬆一下：https://www.youtube.com/watch?v=inpok4MKVLM"
+    elif "我想聽" in user_message and "歌" in user_message:
+        reply = handle_music_request(user_message)
+    elif "冥想" in user_message or "靜心" in user_message:
         reply = handle_meditation(user_message)
     elif "故事" in user_message:
         reply = handle_story(user_message, user_id)
     elif "梗圖" in user_message or "音樂" in user_message or "影片" in user_message:
         reply = handle_fun(user_message)
     else:
-        reply = "我是你的AI朋友，可以陪你聊天、說故事、或幫你放鬆一下～\n輸入: 冥想、故事、梗圖、音樂、影片"
+        reply = "我在這裡陪你，想聽我說故事，還是想聽音樂或冥想放鬆一下？"
+
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-    
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
