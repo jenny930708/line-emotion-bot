@@ -95,6 +95,9 @@ def handle_message(event):
     print(f"[使用者訊息] {user_message}")
 
     if "推薦" in user_message and "歌" in user_message:
+    reply = auto_recommend_artist(user_message)
+elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
+    reply = TextSendMessage(text=handle_story(user_message))
         reply = auto_recommend_artist(user_message)
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
@@ -104,9 +107,7 @@ def handle_message(event):
             reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😢")
-    elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
-        reply = TextSendMessage(text=handle_story(user_message))
-    else:
+        else:
         reply = TextSendMessage(text="你可以說：『我想聽 xxx』、『推薦某某歌手的歌』或『來張梗圖』、『說個故事』來試試看 🎵🦊")
 
     line_bot_api.reply_message(event.reply_token, reply)
