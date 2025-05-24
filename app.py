@@ -1,8 +1,8 @@
 import os
+import re
 import random
 import urllib.parse
 import requests
-import re  # ✅ 加入 re 模組
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -14,7 +14,7 @@ from openai import OpenAI
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 
-# 載入環境變數
+# 載入 .env
 load_dotenv()
 
 app = Flask(__name__)
@@ -22,7 +22,7 @@ line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ✅ 改進版：穩定抓 YouTube 第一筆影片連結
+# ✅ 更穩定的 YouTube 搜尋
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -36,7 +36,7 @@ def search_youtube_link(query):
         print("❌ YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# 🎶 推薦周杰倫歌曲
+# ✅ 自動推薦周杰倫歌曲
 def auto_recommend_jay_chou():
     song_titles = ["晴天", "稻香", "夜曲", "七里香", "青花瓷"]
     msg = "這裡是幾首周杰倫的經典歌曲：\n\n"
@@ -47,7 +47,7 @@ def auto_recommend_jay_chou():
     msg += "\n希望你喜歡 🎵 想聽更多可以再告訴我！"
     return TextSendMessage(text=msg)
 
-# 🎵 處理使用者音樂請求
+# ✅ 使用者主動請求音樂
 def handle_music_request(user_message):
     keywords = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
     if not keywords:
@@ -59,7 +59,7 @@ def handle_music_request(user_message):
     link = search_youtube_link(keywords)
     return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
 
-# GPT 情感聊天
+# ✅ OpenAI GPT 情緒聊天
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -73,7 +73,7 @@ def chat_with_gpt(user_message):
     except Exception as e:
         return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
-# 梗圖搜尋
+# ✅ 梗圖搜尋
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -123,7 +123,7 @@ def handle_message(event):
         reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
     elif "冥想" in user_message or "靜心" in user_message:
         reply = TextSendMessage(text=handle_meditation(user_message))
-    elif "故事" in user_message:
+    elif re.search(r"(說|講)?故事", user_message):
         reply = TextSendMessage(text=handle_story(user_message, user_id))
     elif "梗圖" in user_message:
         image_url = search_meme_image_by_yahoo()
