@@ -1,105 +1,54 @@
+
 import os
+import re
 import random
 import urllib.parse
 import requests
-import re  # ✅ 加入 re 模組
 from flask import Flask, request, abort
 from dotenv import load_dotenv
-from bs4 import BeautifulSoup
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
-from openai import OpenAI
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
-from agents.meditation_agent import handle_meditation
-from agents.story_agent import handle_story
-
-# 載入環境變數
 load_dotenv()
 
 app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ✅ 改進版：穩定抓 YouTube 第一筆影片連結
+# ✅ YouTube 搜尋第一筆影片連結
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
-        html = requests.get(search_url, headers=headers).text
+        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
+        html = requests.get(url, headers=headers).text
         match = re.search(r'"url":"/watch\?v=(.{11})"', html)
         if match:
-            video_id = match.group(1)
-            return f"https://www.youtube.com/watch?v={video_id}"
+            return f"https://www.youtube.com/watch?v={match.group(1)}"
     except Exception as e:
-        print("❌ YouTube 查詢失敗：", e)
+        print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# 🎶 推薦周杰倫歌曲
-def auto_recommend_jay_chou():
-    song_titles = ["晴天", "稻香", "夜曲", "七里香", "青花瓷"]
-    msg = "這裡是幾首周杰倫的經典歌曲：\n\n"
-    for idx, title in enumerate(song_titles, 1):
-        query = f"周杰倫 {title}"
-        link = search_youtube_link(query)
-        msg += f"{idx}. {title} 👉 {link}\n"
-    msg += "\n希望你喜歡 🎵 想聽更多可以再告訴我！"
-    return TextSendMessage(text=msg)
+# ✅ 動態推薦歌手歌曲 + 附連結（不限歌手）
+def auto_recommend_artist(user_message):
+    artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
+    if artist_match:
+        artist = artist_match.group(2)
+        # 假設通用熱門歌名（未連接真實 API）
+        common_titles = ["代表作", "經典歌曲", "熱門歌曲", "必聽歌曲", "傳唱歌曲"]
+        msg = f"這裡是為你推薦的「{artist}」熱門歌曲：\n\n"
+        for idx in range(1, 6):
+            fake_title = f"{artist} {random.choice(common_titles)} {idx}"
+            link = search_youtube_link(fake_title)
+            msg += f"{idx}. {fake_title} 👉 {link}\n"
+        msg += "\n以上推薦為搜尋自動結果，如想指定歌曲可直接輸入『我想聽 + 歌名』"
+        return TextSendMessage(text=msg)
 
-# 🎵 處理使用者音樂請求
-def handle_music_request(user_message):
-    keywords = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
-    if not keywords:
-        default_choices = [
-            "chill music playlist", "happy music", "focus study music",
-            "lofi chillhop", "ambient relaxing music"
-        ]
-        keywords = random.choice(default_choices)
-    link = search_youtube_link(keywords)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
-
-# GPT 情感聊天
-def chat_with_gpt(user_message):
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一位溫柔的 AI 好朋友，擅長安撫使用者情緒、傾聽與聊天。"},
-                {"role": "user", "content": user_message}
-            ]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ OpenAI 發生錯誤：{str(e)}"
-
-# 梗圖搜尋
-def search_meme_image_by_yahoo(query="梗圖"):
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        url = f"https://tw.images.search.yahoo.com/search/images?p={query}"
-        res = requests.get(url, headers=headers)
-        soup = BeautifulSoup(res.text, "html.parser")
-        img_tags = soup.select("img")
-        img_urls = [img["src"] for img in img_tags if img.get("src") and img["src"].startswith("http")]
-        if img_urls:
-            return random.choice(img_urls)
-    except Exception as e:
-        print(f"[Yahoo 搜圖錯誤] {e}")
-    return None
+    return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
 
 @app.route("/")
 def health_check():
     return "OK"
-
-@app.route("/test-image")
-def test_image():
-    keyword = request.args.get("q", "梗圖")
-    image_url = search_meme_image_by_yahoo(keyword)
-    if image_url:
-        return f"<img src='{image_url}' style='max-width: 400px;'><br><code>{image_url}</code>"
-    else:
-        return "❌ 找不到梗圖"
 
 @app.route("/callback", methods=["POST"])
 def callback():
@@ -114,27 +63,18 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
-    user_id = event.source.user_id
     print(f"[使用者訊息] {user_message}")
 
-    if "推薦" in user_message and "周杰倫" in user_message:
-        reply = auto_recommend_jay_chou()
-    elif "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
-        reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
-    elif "冥想" in user_message or "靜心" in user_message:
-        reply = TextSendMessage(text=handle_meditation(user_message))
-    elif "故事" in user_message:
-        reply = TextSendMessage(text=handle_story(user_message, user_id))
-    elif "梗圖" in user_message:
-        image_url = search_meme_image_by_yahoo()
-        if image_url:
-            reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
-        else:
-            reply = TextSendMessage(text="❌ 找不到梗圖 😥")
-    elif ("聽" in user_message) and ("音樂" in user_message or "歌" in user_message):
-        reply = handle_music_request(user_message)
+    if "推薦" in user_message and "歌" in user_message:
+        reply = auto_recommend_artist(user_message)
+    elif ("聽" in user_message or "播放" in user_message) and ("歌" in user_message or "音樂" in user_message):
+        query = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
+        if not query:
+            query = "熱門中文歌曲"
+        link = search_youtube_link(query)
+        reply = TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
     else:
-        reply = TextSendMessage(text=chat_with_gpt(user_message))
+        reply = TextSendMessage(text="你可以說：『推薦幾首某某歌手的歌』或『我想聽 xxx』來試試 🎶")
 
     line_bot_api.reply_message(event.reply_token, reply)
 
