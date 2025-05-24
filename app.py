@@ -12,28 +12,31 @@ from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 from agents.fun_agent import handle_fun, handle_music_request
 
+# 載入 .env 設定
 load_dotenv()
 app = Flask(__name__)
 
+# 初始化 LINE 與 OpenAI
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 🔍 Google CSE 搜圖
+# Google CSE 搜尋圖片
 def search_meme_image(query):
     api_key = os.getenv("GOOGLE_API_KEY")
-    cse_id = os.getenv("GOOGLE_CSE_ID")
+    cse_id = os.getenv("GOOGLE_CSE_CX")
     url = f"https://www.googleapis.com/customsearch/v1?q={query}&cx={cse_id}&searchType=image&key={api_key}"
     try:
-        res = requests.get(url).json()
-        items = res.get("items", [])
-        if items:
-            return random.choice(items)["link"]
+        res = requests.get(url)
+        res.raise_for_status()
+        results = res.json().get("items", [])
+        if results:
+            return random.choice(results)["link"]
     except Exception as e:
-        print(f"[錯誤] 搜圖失敗：{e}")
+        print("❌ 梗圖搜尋失敗：", e)
     return None
 
-# 🤖 GPT 對話
+# GPT 回覆
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -47,20 +50,19 @@ def chat_with_gpt(user_message):
     except Exception as e:
         return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
-# ✅ 健康檢查
+# 健康檢查
 @app.route("/")
 def health_check():
     return "OK"
 
-# ✅ 圖片測試 API
+# 測試梗圖搜尋（直接瀏覽器看結果）
 @app.route("/test-image")
 def test_image():
-    url = search_meme_image("搞笑梗圖")
-    if url:
-        return f"<img src='{url}' width='400'><br>{url}"
-    return "❌ 找不到梗圖"
+    keywords = ["療癒梗圖", "搞笑梗圖", "心情不好梗圖", "台灣梗圖", "中文梗圖"]
+    img_url = search_meme_image(random.choice(keywords))
+    return f"<img src='{img_url}' width='300'>" if img_url else "❌ 找不到梗圖"
 
-# ✅ LINE Webhook
+# LINE Webhook
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
@@ -71,7 +73,7 @@ def callback():
         abort(400)
     return "OK"
 
-# ✅ 處理 LINE 訊息事件
+# 處理訊息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
@@ -86,12 +88,12 @@ def handle_message(event):
     elif "故事" in user_message:
         reply = TextSendMessage(text=handle_story(user_message, user_id))
     elif "梗圖" in user_message:
-        keywords = ["療癒梗圖", "心情不好梗圖", "搞笑梗圖", "中文梗圖"]
-        image_url = search_meme_image(random.choice(keywords))
-        if image_url:
-            reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
+        keywords = ["療癒梗圖", "搞笑梗圖", "中文梗圖", "台灣梗圖"]
+        img_url = search_meme_image(random.choice(keywords))
+        if img_url:
+            reply = ImageSendMessage(original_content_url=img_url, preview_image_url=img_url)
         else:
-            reply = TextSendMessage(text="目前找不到梗圖 😥")
+            reply = TextSendMessage(text="❌ 目前找不到梗圖 😢")
     elif "音樂" in user_message or "影片" in user_message:
         reply = TextSendMessage(text=handle_fun(user_message))
     else:
@@ -99,6 +101,7 @@ def handle_message(event):
 
     line_bot_api.reply_message(event.reply_token, reply)
 
+# 啟動服務
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
