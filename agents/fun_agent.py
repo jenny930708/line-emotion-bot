@@ -45,13 +45,9 @@ def search_youtube_music(query):
 
 # 處理音樂需求
 def handle_music_request(user_message):
-    # 僅當使用者有提出具體需求時才查詢
     if "音樂" in user_message or "歌" in user_message:
-        # 從訊息中取出可能的查詢詞
         keywords = ["周杰倫", "林俊傑", "白噪音", "水晶音樂", "輕音樂", "放鬆", "鋼琴", "冥想", "療癒", "純音樂"]
-        query = next((word for word in keywords if word in user_message), None)
-        if not query:
-            return TextSendMessage(text="請告訴我你想聽什麼風格或歌手的音樂，例如：周杰倫、白噪音、水晶音樂等。")
+        query = next((word for word in keywords if word in user_message), "放鬆音樂")
 
         video_url = search_youtube_music(query)
         if video_url:
