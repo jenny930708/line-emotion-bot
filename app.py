@@ -10,12 +10,14 @@ from bs4 import BeautifulSoup
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
+from openai import OpenAI
 
 load_dotenv()
 
 app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def search_youtube_link(query):
     try:
@@ -53,6 +55,19 @@ def auto_recommend_artist(user_message):
         return TextSendMessage(text=msg)
     return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
 
+def generate_story_by_topic(topic):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "你是一位會說故事的 AI，請根據主題用溫柔口吻講一個 100~150 字的童話故事。"},
+                {"role": "user", "content": f"請說一個關於「{topic}」主題的童話故事，不要標題。"}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ 故事生成失敗：{str(e)}"
+
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -66,14 +81,6 @@ def search_meme_image_by_yahoo(query="梗圖"):
     except Exception as e:
         print("Yahoo 梗圖搜尋錯誤：", e)
     return None
-
-def handle_story(user_message):
-    story = (
-        "從前從前，有一隻小狐狸住在山林裡，他每天都會幫森林裡的動物送信。\n"
-        "有一天，他收到了一封奇怪的信，上面什麼都沒寫，只畫了一顆星星...\n"
-        "你想知道接下來發生了什麼嗎？"
-    )
-    return story
 
 @app.route("/")
 def health_check():
@@ -91,23 +98,27 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    user_message = event.message.text
+    user_message = event.message.text.strip()
     print(f"[使用者訊息] {user_message}")
+
+    story_topics = ["冒險", "友情", "溫馨", "奇幻", "動物", "勇氣"]
 
     if "推薦" in user_message and "歌" in user_message:
         reply = auto_recommend_artist(user_message)
+    elif any(user_message == topic for topic in story_topics):
+        reply = TextSendMessage(text=generate_story_by_topic(user_message))
     elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
-        reply = TextSendMessage(text=handle_story(user_message))
+        reply = TextSendMessage(text="你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻")
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
-    elif "梗圖" in user_message or "再來一張" in user_message or "換一張" in user_message or "再給我一張" in user_message:
+    elif "梗圖" in user_message:
         image_url = search_meme_image_by_yahoo()
         if image_url:
             reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😢")
     else:
-        reply = TextSendMessage(text="你可以說：『我想聽 xxx』、『推薦某某歌手的歌』或『來張梗圖』、『說個故事』來試試看 🎵🦊")
+        reply = TextSendMessage(text="你可以說『我想聽音樂』、『來張梗圖』或『說個故事』來試試喔！")
 
     line_bot_api.reply_message(event.reply_token, reply)
 
