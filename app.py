@@ -34,8 +34,7 @@ def handle_message(event):
     user_id = event.source.user_id
 
     if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
-        reply = "聽起來你今天過得不太好，我在這裡陪你。
-可以聽聽這段音樂放鬆一下：https://www.youtube.com/watch?v=inpok4MKVLM"
+        reply = "聽起來你今天過得不太好，我在這裡陪你可以聽聽這段音樂放鬆一下：https://www.youtube.com/watch?v=inpok4MKVLM"
     elif "我想聽" in user_message and "歌" in user_message:
         reply = handle_music_request(user_message)
     elif "冥想" in user_message or "靜心" in user_message:
