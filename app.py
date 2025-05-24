@@ -29,19 +29,29 @@ def search_youtube_link(query):
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# ✅ 動態推薦歌手歌曲 + 附連結（不限歌手）
+# ✅ 音樂請求處理（處理我想聽 xxx、播放 xxx）
+def handle_music_request(user_message):
+    keywords = user_message
+    for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
+        keywords = keywords.replace(word, "")
+    keywords = keywords.strip()
+    if not keywords:
+        keywords = "熱門音樂"
+    link = search_youtube_link(keywords)
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
+
+# ✅ 動態推薦歌手歌曲（不限歌手）+ 自動附連結
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
     if artist_match:
         artist = artist_match.group(2)
-        # 假設通用熱門歌名（未連接真實 API）
         common_titles = ["代表作", "經典歌曲", "熱門歌曲", "必聽歌曲", "傳唱歌曲"]
         msg = f"這裡是為你推薦的「{artist}」熱門歌曲：\n\n"
         for idx in range(1, 6):
             fake_title = f"{artist} {random.choice(common_titles)} {idx}"
             link = search_youtube_link(fake_title)
             msg += f"{idx}. {fake_title} 👉 {link}\n"
-        msg += "\n以上推薦為搜尋自動結果，如想指定歌曲可直接輸入『我想聽 + 歌名』"
+        msg += "\n以上推薦為自動搜尋結果，如想指定歌曲可直接輸入『我想聽 + 歌名』"
         return TextSendMessage(text=msg)
 
     return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
@@ -67,12 +77,8 @@ def handle_message(event):
 
     if "推薦" in user_message and "歌" in user_message:
         reply = auto_recommend_artist(user_message)
-    elif ("聽" in user_message or "播放" in user_message) and ("歌" in user_message or "音樂" in user_message):
-        query = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
-        if not query:
-            query = "熱門中文歌曲"
-        link = search_youtube_link(query)
-        reply = TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
+    elif "聽" in user_message or "播放" in user_message:
+        reply = handle_music_request(user_message)
     else:
         reply = TextSendMessage(text="你可以說：『推薦幾首某某歌手的歌』或『我想聽 xxx』來試試 🎶")
 
