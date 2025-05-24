@@ -1,4 +1,3 @@
-
 import os
 import re
 import random
@@ -172,6 +171,11 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    theme_reply = handle_theme_recommendation(event.message.text.strip())
+    if theme_reply:
+        line_bot_api.reply_message(event.reply_token, theme_reply)
+        return
+
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     print(f"[使用者訊息] {user_message}")
