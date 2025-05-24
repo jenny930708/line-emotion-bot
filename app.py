@@ -1,28 +1,18 @@
 import os
-import json
-from datetime import datetime
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from dotenv import load_dotenv
-from openai import OpenAI
-import tempfile
-import requests
-
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 from agents.fun_agent import handle_fun
 
-# 載入環境變數
 load_dotenv()
-
 app = Flask(__name__)
 
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/")
 def health_check():
@@ -50,9 +40,7 @@ def handle_message(event):
     elif "梗圖" in user_message or "音樂" in user_message or "影片" in user_message:
         reply = handle_fun(user_message)
     else:
-        reply = "嗨～你可以輸入『冥想』、『說故事』或『來點梗圖』來放鬆一下喔！"
+        reply = "我是你的AI朋友，可以陪你聊天、說故事、或幫你放鬆一下～
+輸入：冥想、故事、梗圖、音樂、影片"
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=reply)
-    )
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
