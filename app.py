@@ -1,3 +1,4 @@
+
 import os
 import re
 import random
@@ -17,6 +18,9 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# ✅ 用來記住每位使用者最近看的梗圖主題
+last_meme_theme = {}
 
 def search_youtube_link(query):
     try:
@@ -56,11 +60,13 @@ def auto_recommend_artist(user_message):
 
 def generate_story_by_topic(topic):
     try:
+        variation = random.choice(["小狐狸", "獨角獸", "小女孩", "探險隊", "魔法師", "未來世界"])
+        prompt = f"請說一個以「{variation}」為主角，主題為「{topic}」的童話故事，長度約100~150字，不要標題。"
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "你是一位會說故事的 AI，請根據主題用溫柔口吻講一個 100~150 字的童話故事。"},
-                {"role": "user", "content": f"請說一個關於「{topic}」主題的童話故事，不要標題。"}
+                {"role": "system", "content": "你是一位會說故事的 AI，請用溫柔口吻講故事。"},
+                {"role": "user", "content": prompt}
             ]
         )
         return response.choices[0].message.content
@@ -94,6 +100,23 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print("Yahoo 梗圖搜尋錯誤：", e)
     return None
 
+def handle_fun_image(user_message, user_id):
+    global last_meme_theme
+    theme_keywords = ["動物", "狗", "貓", "熊", "老虎", "貓咪", "狗狗", "鯊魚", "食物", "人類", "日常", "漫畫", "梗"]
+    matched_theme = next((word for word in theme_keywords if word in user_message), None)
+
+    if "再來一張" in user_message:
+        theme = last_meme_theme.get(user_id, "梗圖")
+    else:
+        theme = f"{matched_theme}梗圖" if matched_theme else "梗圖"
+        last_meme_theme[user_id] = theme
+
+    image_url = search_meme_image_by_yahoo(theme)
+    if image_url:
+        return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
+    else:
+        return TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")
+
 @app.route("/")
 def health_check():
     return "OK"
@@ -111,6 +134,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text.strip()
+    user_id = event.source.user_id
     print(f"[使用者訊息] {user_message}")
 
     story_topics = ["冒險", "友情", "溫馨", "奇幻", "動物", "勇氣"]
@@ -123,12 +147,8 @@ def handle_message(event):
         reply = TextSendMessage(text="你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻")
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
-    elif "梗圖" in user_message:
-        image_url = search_meme_image_by_yahoo()
-        if image_url:
-            reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
-        else:
-            reply = TextSendMessage(text="❌ 找不到梗圖 😢")
+    elif "梗圖" in user_message or "再來一張" in user_message:
+        reply = handle_fun_image(user_message, user_id)
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
