@@ -21,39 +21,49 @@ def search_meme_image_by_yahoo(query="梗圖"):
 
 # 音樂需求處理：包含關鍵字對應與隨機播放
 def handle_music_request(user_message):
-    music_map = {
-        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",
-        "林俊傑": "https://www.youtube.com/watch?v=F62HMs1N6Vc",
-        "白噪音": "https://www.youtube.com/watch?v=eZp4zAm5qvY",
-        "水晶": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
-        "輕音樂": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
-        "放鬆": "https://www.youtube.com/watch?v=MIr3RsUWrdo",
-        "鋼琴": "https://www.youtube.com/watch?v=5qap5aO4i9A",
-        "自然": "https://www.youtube.com/watch?v=OdIJ2x3nxzQ",
-        "雨聲": "https://www.youtube.com/watch?v=q76bMs-NwRk"
+    # 根據使用者的需求推薦特定音樂
+    music_suggestions = {
+        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",  # 周杰倫經典
+        "林俊傑": "https://www.youtube.com/watch?v=Q9CSj5L8RNI",
+        "白噪音": "https://www.youtube.com/watch?v=q76bMs-NwRk",
+        "鋼琴": "https://www.youtube.com/watch?v=4Tr0otuiQuU",
+        "水晶": "https://www.youtube.com/watch?v=C2N1wSkCjZ8",
+        "輕音樂": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
+        "放鬆": "https://www.youtube.com/watch?v=1ZYbU82GVz4",
+        "睡覺": "https://www.youtube.com/watch?v=61bLqu6okpY"
     }
 
-    for keyword, url in music_map.items():
+    for keyword, url in music_suggestions.items():
         if keyword in user_message:
-            return f"🎶 這是你想聽的「{keyword}」音樂：{url}"
+            return f"🎵 這是我為你挑選的 {keyword} 音樂，希望你會喜歡：{url}"
 
-    # 如果沒有明確需求，就隨機選一首
-    random_url = random.choice(list(music_map.values()))
-    return f"🎵 這首歌也許能陪伴你現在的心情：{random_url}"
+    # 如果沒偵測到特定需求，回傳隨機一首音樂
+    fallback_music = [
+        "https://www.youtube.com/watch?v=ZbZSe6N_BXs",
+        "https://www.youtube.com/watch?v=UfcAVejslrU",
+        "https://www.youtube.com/watch?v=5qap5aO4i9A"
+    ]
+    return f"🎵 這首音樂也許能陪伴你現在的心情：{random.choice(fallback_music)}"
+
 
 # 梗圖、音樂、影片回覆
 def handle_fun(user_message):
     if "梗圖" in user_message:
-        image_url = search_meme_image_by_yahoo()
+        # 抽取主題關鍵字，例如「動物」、「狗」、「貓」、「搞笑」
+        theme_keywords = ["動物", "狗", "貓", "熊", "老虎", "貓咪", "狗狗", "鯊魚", "食物", "人類", "日常", "漫畫", "梗"]
+        matched_theme = next((word for word in theme_keywords if word in user_message), None)
+        search_query = f"{matched_theme}梗圖" if matched_theme else "梗圖"
+
+        image_url = search_meme_image_by_yahoo(search_query)
         if image_url:
             return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
         else:
-            return TextSendMessage(text="❌ 目前找不到梗圖 😥")
-    
+            return TextSendMessage(text=f"❌ 沒找到與「{search_query}」相關的梗圖 😥")
+
     elif "音樂" in user_message:
         return TextSendMessage(text=handle_music_request(user_message))
 
     elif "影片" in user_message:
         return TextSendMessage(text="這支短影片讓你笑一笑：https://www.youtube.com/shorts/abc123xyz")
 
-    return TextSendMessage(text="想放鬆一下嗎？你可以說「梗圖」、「影片」或「音樂」來跟我互動喔！")
+    return TextSendMessage(text="你想看看什麼樣的梗圖呢？可以說「貓的梗圖」、「美食梗圖」之類的哦！")
