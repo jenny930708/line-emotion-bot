@@ -4,29 +4,32 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI  # ✅ 新版 openai 套件用法
 
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 from agents.fun_agent import handle_fun, handle_music_request
 
+# 載入環境變數
 load_dotenv()
 app = Flask(__name__)
 
+# 初始化 LINE Bot 與 OpenAI Client
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # ✅ 新寫法
 
+# GPT 聊天邏輯（新版 openai 語法）
 def chat_with_gpt(user_message):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "你是一位溫柔的 AI 好朋友，擅長安撫使用者情緒、傾聽與聊天。"},
                 {"role": "user", "content": user_message}
             ]
         )
-        return response['choices'][0]['message']['content']
+        return response.choices[0].message.content
     except Exception as e:
         return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
