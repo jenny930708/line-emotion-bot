@@ -64,7 +64,7 @@ def handle_message(event):
     if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
         reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
 
-    elif "我想聽" in user_message and "歌" in user_message:
+    elif "音樂" in user_message or "歌曲" in user_message or "聽" in user_message:
         reply = TextSendMessage(text=handle_music_request(user_message))
 
     elif "冥想" in user_message or "靜心" in user_message:
@@ -80,9 +80,9 @@ def handle_message(event):
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😥")
 
-    elif "音樂" in user_message or "歌曲" in user_message or "聽" in user_message:
-    reply = TextSendMessage(text=handle_music_request(user_message))
-    
+    elif "影片" in user_message:
+        reply = handle_fun(user_message)
+
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
