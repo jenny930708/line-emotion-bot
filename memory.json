@@ -1,6 +1,9 @@
 {
-  "U1234567890": [
-    "我今天好累",
-    "為什麼這麼累？"
-  ]
+  "users": {},
+  "preferences_template": {
+    "mood": "",
+    "preferred_music": "",
+    "preferred_story_genre": "",
+    "last_interaction": ""
+  }
 }
