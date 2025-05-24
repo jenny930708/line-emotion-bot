@@ -17,7 +17,6 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-# ✅ YouTube 搜尋第一筆影片連結
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -30,7 +29,6 @@ def search_youtube_link(query):
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# ✅ 音樂請求處理
 def handle_music_request(user_message):
     keywords = user_message
     for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
@@ -41,7 +39,6 @@ def handle_music_request(user_message):
     link = search_youtube_link(keywords)
     return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
 
-# ✅ 推薦歌手歌曲
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
     if artist_match:
@@ -56,7 +53,6 @@ def auto_recommend_artist(user_message):
         return TextSendMessage(text=msg)
     return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
 
-# ✅ 梗圖搜尋功能
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -71,13 +67,10 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print("Yahoo 梗圖搜尋錯誤：", e)
     return None
 
-# ✅ 簡單故事功能
 def handle_story(user_message):
     story = (
-        "從前從前，有一隻小狐狸住在山林裡，他每天都會幫森林裡的動物送信。
-"
-        "有一天，他收到了一封奇怪的信，上面什麼都沒寫，只畫了一顆星星...
-"
+        "從前從前，有一隻小狐狸住在山林裡，他每天都會幫森林裡的動物送信。\n"
+        "有一天，他收到了一封奇怪的信，上面什麼都沒寫，只畫了一顆星星...\n"
         "你想知道接下來發生了什麼嗎？"
     )
     return story
