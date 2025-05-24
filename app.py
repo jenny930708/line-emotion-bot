@@ -24,15 +24,17 @@ last_meme_theme = {}
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
-        html = requests.get(search_url, headers=headers).text
-        match = re.search(r'"url":"/watch\?v=(.{11})"', html)
-        if match:
-            return f"https://www.youtube.com/watch?v={match.group(1)}"
+        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
+        html = requests.get(url, headers=headers).text
+        video_ids = re.findall(r'"url":"/watch\\?v=(.{11})"', html)
+        seen = set()
+        for vid in video_ids:
+            if vid not in seen:
+                seen.add(vid)
+                return f"https://www.youtube.com/watch?v={vid}"
     except Exception as e:
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
-
 
 def handle_music_request(user_message):
     cleaned = user_message
