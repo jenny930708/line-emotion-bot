@@ -46,18 +46,6 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print(f"[Yahoo 搜圖錯誤] {e}")
     return None
 
-def handle_fun(user_message):
-    if "梗圖" in user_message:
-        image_url = search_meme_image_by_yahoo()
-        if image_url:
-            return ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
-        else:
-            return TextSendMessage(text="❌ 找不到梗圖 😥")
-    elif "影片" in user_message:
-        return TextSendMessage(text="這支短影片讓你笑一笑：https://www.youtube.com/shorts/IY4U_t1JkJg")
-    else:
-        return TextSendMessage(text="需要來點輕鬆的嗎？你可以說『給我一張梗圖』或『來支音樂/影片』喔！")
-
 def handle_music_request(user_message):
     search_terms = {
         "周杰倫": "周杰倫 音樂",
@@ -69,7 +57,7 @@ def handle_music_request(user_message):
 
     for keyword, query in search_terms.items():
         if keyword in user_message:
-            return search_youtube_music(query)
+            return TextSendMessage(text=search_youtube_music(query))
 
     default_choices = [
         "chill music playlist",
@@ -78,7 +66,7 @@ def handle_music_request(user_message):
         "lofi chillhop",
         "ambient relaxing music"
     ]
-    return search_youtube_music(random.choice(default_choices))
+    return TextSendMessage(text=search_youtube_music(random.choice(default_choices)))
 
 def search_youtube_music(query):
     try:
@@ -125,7 +113,7 @@ def handle_message(event):
     if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
         reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
     elif "我想聽" in user_message and "歌" in user_message:
-        reply = TextSendMessage(text=handle_music_request(user_message))
+        reply = handle_music_request(user_message)  # ✅ 修正這行
     elif "冥想" in user_message or "靜心" in user_message:
         reply = TextSendMessage(text=handle_meditation(user_message))
     elif "故事" in user_message:
@@ -137,7 +125,7 @@ def handle_message(event):
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😥")
     elif "音樂" in user_message or "影片" in user_message:
-        reply = TextSendMessage(text=handle_music_request(user_message))
+        reply = handle_music_request(user_message)  # ✅ 修正這行
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
