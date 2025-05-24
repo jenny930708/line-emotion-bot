@@ -1,4 +1,6 @@
 import os
+import random
+import requests
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
@@ -8,18 +10,16 @@ from openai import OpenAI
 
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
-from agents.fun_agent import handle_fun, handle_music_request
+from agents.fun_agent import handle_fun, handle_music_request, search_meme_image  # 加入 search_meme_image
 
 # 載入環境變數
 load_dotenv()
 app = Flask(__name__)
 
-# 初始化 LINE 與 OpenAI
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# GPT 模型回應
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -37,19 +37,25 @@ def chat_with_gpt(user_message):
 def health_check():
     return "OK"
 
+@app.route("/test-image")
+def test_image():
+    keyword = request.args.get("q", "梗圖")
+    image_url = search_meme_image(keyword)
+    if image_url:
+        return f"<img src='{image_url}' style='max-width: 400px;'><br><code>{image_url}</code>"
+    else:
+        return "❌ 找不到梗圖"
+
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
-
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
-
     return "OK"
 
-# 處理訊息事件
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
@@ -68,7 +74,7 @@ def handle_message(event):
         reply = TextSendMessage(text=handle_story(user_message, user_id))
 
     elif "梗圖" in user_message or "音樂" in user_message or "影片" in user_message:
-        reply = handle_fun(user_message)  # 👈 支援圖片與影片/音樂回應
+        reply = handle_fun(user_message)
 
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
