@@ -1,3 +1,4 @@
+
 import os
 import re
 import random
@@ -53,7 +54,8 @@ def handle_music_request(user_message):
         search_query = f'"{keywords}" 官方 MV site:youtube.com'
 
     link = search_youtube_link(search_query)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：{link}")
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：
+{link}")
 
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
@@ -175,6 +177,7 @@ def handle_message(event):
     if theme_reply:
         line_bot_api.reply_message(event.reply_token, theme_reply)
         return
+    else:
 
     user_message = event.message.text.strip()
     user_id = event.source.user_id
