@@ -1,25 +1,29 @@
 import os
 import random
-import requests
 import urllib.parse
+import requests
 from flask import Flask, request, abort
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
-from dotenv import load_dotenv
 from openai import OpenAI
+
+# 自定義模組
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
-from bs4 import BeautifulSoup
 
-# 載入環境變數
+# 載入 .env
 load_dotenv()
-app = Flask(__name__)
 
+# 初始化 Flask 與 LINE Bot
+app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# AI 溫柔聊天模式
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -33,6 +37,7 @@ def chat_with_gpt(user_message):
     except Exception as e:
         return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
+# 梗圖搜尋功能
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -47,11 +52,9 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print(f"[Yahoo 搜圖錯誤] {e}")
     return None
 
+# YouTube 音樂搜尋功能
 def handle_music_request(user_message):
-    # 移除常見詞彙，只留下音樂關鍵字
     keywords = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
-
-    # 若沒輸入關鍵字就使用預設列表
     if not keywords:
         default_choices = [
             "chill music playlist",
@@ -65,7 +68,6 @@ def handle_music_request(user_message):
     query = urllib.parse.quote(keywords)
     search_url = f"https://www.youtube.com/results?search_query={query}"
 
-    # 嘗試取得第一個影片連結
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         html = requests.get(search_url, headers=headers).text
@@ -77,12 +79,15 @@ def handle_music_request(user_message):
                 return TextSendMessage(text=f"🎵 這是我為你找到的音樂：\n{full_url}")
     except Exception as e:
         print("搜尋 YouTube 音樂時出錯：", e)
-    return "抱歉，目前找不到合適的音樂影片 😢"
 
+    return TextSendMessage(text=f"🎵 這是你可以搜尋的音樂：\n{search_url}")
+
+# 健康檢查路由
 @app.route("/")
 def health_check():
     return "OK"
 
+# 梗圖測試頁
 @app.route("/test-image")
 def test_image():
     keyword = request.args.get("q", "梗圖")
@@ -92,6 +97,7 @@ def test_image():
     else:
         return "❌ 找不到梗圖"
 
+# LINE Bot callback
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
@@ -102,15 +108,17 @@ def callback():
         abort(400)
     return "OK"
 
+# 處理文字訊息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
+    print(f"[使用者訊息] {user_message}")
 
     if "心情不好" in user_message or "不開心" in user_message or "難過" in user_message:
         reply = TextSendMessage(text="聽起來你今天過得不太好，我在這裡陪你。這首音樂也許能陪伴你：https://www.youtube.com/watch?v=inpok4MKVLM")
-    elif "我想聽" in user_message and "歌" in user_message:
-        reply = handle_music_request(user_message)  # ✅ 修正這行
+    elif ("聽" in user_message) and ("音樂" in user_message or "歌" in user_message):
+        reply = handle_music_request(user_message)
     elif "冥想" in user_message or "靜心" in user_message:
         reply = TextSendMessage(text=handle_meditation(user_message))
     elif "故事" in user_message:
@@ -121,13 +129,12 @@ def handle_message(event):
             reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😥")
-    elif "音樂" in user_message or "影片" in user_message:
-        reply = handle_music_request(user_message)  # ✅ 修正這行
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
     line_bot_api.reply_message(event.reply_token, reply)
 
+# 啟動 Flask
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
