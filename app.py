@@ -1,4 +1,3 @@
-
 import os
 import re
 import random
@@ -68,6 +67,19 @@ def generate_story_by_topic(topic):
     except Exception as e:
         return f"⚠️ 故事生成失敗：{str(e)}"
 
+def chat_with_gpt(user_message):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "你是一位溫柔的 AI 好朋友，擅長安慰、傾聽、陪伴與聊天。"},
+                {"role": "user", "content": user_message}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"⚠️ 聊天出錯：{str(e)}"
+
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -105,7 +117,7 @@ def handle_message(event):
 
     if "推薦" in user_message and "歌" in user_message:
         reply = auto_recommend_artist(user_message)
-    elif any(user_message == topic for topic in story_topics):
+    elif user_message in story_topics:
         reply = TextSendMessage(text=generate_story_by_topic(user_message))
     elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
         reply = TextSendMessage(text="你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻")
@@ -118,7 +130,7 @@ def handle_message(event):
         else:
             reply = TextSendMessage(text="❌ 找不到梗圖 😢")
     else:
-        reply = TextSendMessage(text="你可以說『我想聽音樂』、『來張梗圖』或『說個故事』來試試喔！")
+        reply = TextSendMessage(text=chat_with_gpt(user_message))
 
     line_bot_api.reply_message(event.reply_token, reply)
 
