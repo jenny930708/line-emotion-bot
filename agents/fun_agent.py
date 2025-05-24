@@ -44,21 +44,25 @@ def handle_fun(user_message):
 
 # 處理音樂請求
 def handle_music_request(user_message):
-    music_suggestions = {
-        "水晶": "https://www.youtube.com/watch?v=lFcSrYw-ARY",  # 水晶音樂
-        "輕音樂": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
-        "放鬆": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
-        "冥想": "https://www.youtube.com/watch?v=MIr3RsUWrdo",
-        "自然": "https://www.youtube.com/watch?v=OdIJ2x3nxzQ",
-        "雨聲": "https://www.youtube.com/watch?v=eZp4zAm5qvY",
+    # 明確需求的關鍵字對應到 YouTube 音樂連結
+    music_map = {
         "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",
+        "林俊傑": "https://www.youtube.com/watch?v=F62HMs1N6Vc",
+        "白噪音": "https://www.youtube.com/watch?v=eZp4zAm5qvY",
+        "水晶": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
+        "輕音樂": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
+        "放鬆": "https://www.youtube.com/watch?v=MIr3RsUWrdo",
         "鋼琴": "https://www.youtube.com/watch?v=5qap5aO4i9A",
-        "清晨": "https://www.youtube.com/watch?v=J8CklYbmeM0"
+        "自然": "https://www.youtube.com/watch?v=OdIJ2x3nxzQ",
+        "雨聲": "https://www.youtube.com/watch?v=q76bMs-NwRk"
     }
 
-    for keyword, url in music_suggestions.items():
+    # 根據使用者輸入判斷是否包含特定需求
+    for keyword, url in music_map.items():
         if keyword in user_message:
-            return f"這首音樂適合你現在的狀態 🎵：{url}"
+            return f"🎶 這是你想聽的 {keyword} 音樂：{url}"
 
-    # 預設回覆
-    return "這首歌也許能振奮你的心情：https://www.youtube.com/watch?v=ZbZSe6N_BXs"
+    # 沒有明確指名時，隨機從推薦列表中挑一首音樂
+    random_list = list(music_map.values())
+    random.shuffle(random_list)
+    return f"🎵 這首歌也許能陪伴你現在的心情：{random_list[0]}"
