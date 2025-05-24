@@ -6,9 +6,10 @@ import urllib.parse
 import requests
 from flask import Flask, request, abort
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ def search_youtube_link(query):
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# ✅ 音樂請求處理（處理我想聽 xxx、播放 xxx）
+# ✅ 音樂請求處理
 def handle_music_request(user_message):
     keywords = user_message
     for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
@@ -40,7 +41,7 @@ def handle_music_request(user_message):
     link = search_youtube_link(keywords)
     return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
 
-# ✅ 動態推薦歌手歌曲（不限歌手）+ 自動附連結
+# ✅ 推薦歌手歌曲
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
     if artist_match:
@@ -53,8 +54,33 @@ def auto_recommend_artist(user_message):
             msg += f"{idx}. {fake_title} 👉 {link}\n"
         msg += "\n以上推薦為自動搜尋結果，如想指定歌曲可直接輸入『我想聽 + 歌名』"
         return TextSendMessage(text=msg)
-
     return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首周杰倫的歌")
+
+# ✅ 梗圖搜尋功能
+def search_meme_image_by_yahoo(query="梗圖"):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        url = f"https://tw.images.search.yahoo.com/search/images?p={query}"
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "html.parser")
+        img_tags = soup.select("img")
+        img_urls = [img["src"] for img in img_tags if img.get("src") and img["src"].startswith("http")]
+        if img_urls:
+            return random.choice(img_urls)
+    except Exception as e:
+        print("Yahoo 梗圖搜尋錯誤：", e)
+    return None
+
+# ✅ 簡單故事功能
+def handle_story(user_message):
+    story = (
+        "從前從前，有一隻小狐狸住在山林裡，他每天都會幫森林裡的動物送信。
+"
+        "有一天，他收到了一封奇怪的信，上面什麼都沒寫，只畫了一顆星星...
+"
+        "你想知道接下來發生了什麼嗎？"
+    )
+    return story
 
 @app.route("/")
 def health_check():
@@ -79,8 +105,16 @@ def handle_message(event):
         reply = auto_recommend_artist(user_message)
     elif "聽" in user_message or "播放" in user_message:
         reply = handle_music_request(user_message)
+    elif "梗圖" in user_message:
+        image_url = search_meme_image_by_yahoo()
+        if image_url:
+            reply = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
+        else:
+            reply = TextSendMessage(text="❌ 找不到梗圖 😢")
+    elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
+        reply = TextSendMessage(text=handle_story(user_message))
     else:
-        reply = TextSendMessage(text="你可以說：『推薦幾首某某歌手的歌』或『我想聽 xxx』來試試 🎶")
+        reply = TextSendMessage(text="你可以說：『我想聽 xxx』、『推薦某某歌手的歌』或『來張梗圖』、『說個故事』來試試看 🎵🦊")
 
     line_bot_api.reply_message(event.reply_token, reply)
 
