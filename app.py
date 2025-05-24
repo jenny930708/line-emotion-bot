@@ -1,4 +1,3 @@
-
 import os
 import re
 import random
@@ -34,6 +33,7 @@ def search_youtube_link(query):
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
+
 def handle_music_request(user_message):
     cleaned = user_message
     for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
@@ -43,9 +43,15 @@ def handle_music_request(user_message):
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我想聽哪一首歌，例如：周杰倫的青花瓷")
 
-    enhanced_query = f'"{keywords}" 官方 MV'
-    link = search_youtube_link(enhanced_query)
-    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
+    # 如果沒有明確歌手名稱，預設補強周杰倫匹配
+    if "周杰倫" not in keywords and "Jay" not in keywords:
+        search_query = f'"{keywords}" 周杰倫 官方 MV site:youtube.com'
+    else:
+        search_query = f'"{keywords}" 官方 MV site:youtube.com'
+
+    link = search_youtube_link(search_query)
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：
+{link}")
 
 def auto_recommend_artist(user_message):
     artist_match = re.search(r"(推薦.*?)([\u4e00-\u9fa5A-Za-z0-9]+)(的歌|的歌曲)", user_message)
