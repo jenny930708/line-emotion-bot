@@ -2,6 +2,7 @@ import os
 import random
 import urllib.parse
 import requests
+import re  # ✅ 加入 re 模組
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
@@ -10,35 +11,32 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 from openai import OpenAI
 
-# 引入外部 agent
 from agents.meditation_agent import handle_meditation
 from agents.story_agent import handle_story
 
 # 載入環境變數
 load_dotenv()
 
-# 初始化 Flask 與 LINE Bot
 app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 🎵 自動搜尋 YouTube 影片連結
+# ✅ 改進版：穩定抓 YouTube 第一筆影片連結
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(search_url, headers=headers).text
-        soup = BeautifulSoup(html, "html.parser")
-        for a in soup.select("a"):
-            href = a.get("href")
-            if href and href.startswith("/watch?v="):
-                return f"https://www.youtube.com{href}"
+        match = re.search(r'"url":"/watch\?v=(.{11})"', html)
+        if match:
+            video_id = match.group(1)
+            return f"https://www.youtube.com/watch?v={video_id}"
     except Exception as e:
         print("❌ YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-# 🎶 推薦周杰倫歌曲並附上自動連結
+# 🎶 推薦周杰倫歌曲
 def auto_recommend_jay_chou():
     song_titles = ["晴天", "稻香", "夜曲", "七里香", "青花瓷"]
     msg = "這裡是幾首周杰倫的經典歌曲：\n\n"
@@ -49,7 +47,7 @@ def auto_recommend_jay_chou():
     msg += "\n希望你喜歡 🎵 想聽更多可以再告訴我！"
     return TextSendMessage(text=msg)
 
-# 🎵 一般音樂查詢（輸入關鍵字）
+# 🎵 處理使用者音樂請求
 def handle_music_request(user_message):
     keywords = user_message.replace("我想聽", "").replace("播放", "").replace("音樂", "").replace("歌", "").strip()
     if not keywords:
@@ -58,13 +56,10 @@ def handle_music_request(user_message):
             "lofi chillhop", "ambient relaxing music"
         ]
         keywords = random.choice(default_choices)
-    query = urllib.parse.quote(keywords)
-    try:
-        return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{search_youtube_link(keywords)}")
-    except:
-        return TextSendMessage(text=f"🎵 你可以試著看這些搜尋結果：\nhttps://www.youtube.com/results?search_query={query}")
+    link = search_youtube_link(keywords)
+    return TextSendMessage(text=f"🎵 這是你可能會喜歡的音樂：\n{link}")
 
-# ❤️ 情感聊天模式
+# GPT 情感聊天
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -78,7 +73,7 @@ def chat_with_gpt(user_message):
     except Exception as e:
         return f"⚠️ OpenAI 發生錯誤：{str(e)}"
 
-# 😆 梗圖搜尋
+# 梗圖搜尋
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -93,7 +88,6 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print(f"[Yahoo 搜圖錯誤] {e}")
     return None
 
-# 基本測試
 @app.route("/")
 def health_check():
     return "OK"
@@ -107,7 +101,6 @@ def test_image():
     else:
         return "❌ 找不到梗圖"
 
-# Line webhook
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
@@ -118,7 +111,6 @@ def callback():
         abort(400)
     return "OK"
 
-# 處理訊息主邏輯
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
@@ -146,7 +138,6 @@ def handle_message(event):
 
     line_bot_api.reply_message(event.reply_token, reply)
 
-# 執行伺服器
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
