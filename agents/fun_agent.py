@@ -44,27 +44,21 @@ def handle_fun(user_message):
 
 # 處理音樂請求
 def handle_music_request(user_message):
-    user_message = user_message.lower()
-
-    # 🎵 關鍵詞對應音樂連結
     music_suggestions = {
-        "輕音樂": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
-        "水晶": "https://www.youtube.com/watch?v=gfvgZyrhUNA",
-        "鋼琴": "https://www.youtube.com/watch?v=hlWiI4xVXKY",
-        "冥想": "https://www.youtube.com/watch?v=inpok4MKVLM",
-        "自然": "https://www.youtube.com/watch?v=odqkzFt3TxM",
-        "海浪": "https://www.youtube.com/watch?v=s0nsvb8F6vI"
+        "水晶": "https://www.youtube.com/watch?v=lFcSrYw-ARY",  # 水晶音樂
+        "輕音樂": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
+        "放鬆": "https://www.youtube.com/watch?v=2OEL4P1Rz04",
+        "冥想": "https://www.youtube.com/watch?v=MIr3RsUWrdo",
+        "自然": "https://www.youtube.com/watch?v=OdIJ2x3nxzQ",
+        "雨聲": "https://www.youtube.com/watch?v=eZp4zAm5qvY",
+        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",
+        "鋼琴": "https://www.youtube.com/watch?v=5qap5aO4i9A",
+        "清晨": "https://www.youtube.com/watch?v=J8CklYbmeM0"
     }
 
-    # 🔍 根據使用者輸入中的關鍵詞比對
     for keyword, url in music_suggestions.items():
         if keyword in user_message:
             return f"這首音樂適合你現在的狀態 🎵：{url}"
 
-    # 🎤 其他語意處理
-    if "周杰倫" in user_message:
-        return "這是周杰倫的經典歌曲，希望你喜歡～ https://www.youtube.com/watch?v=2jD5V8YVhJM"
-    elif "換一首" in user_message or "別的" in user_message:
-        return "試試這首新歌看看，也許會讓你感覺更放鬆：https://www.youtube.com/watch?v=UfcAVejslrU"
-    else:
-        return "這首歌也許能振奮你的心情：https://www.youtube.com/watch?v=ZbZSe6N_BXs"
+    # 預設回覆
+    return "這首歌也許能振奮你的心情：https://www.youtube.com/watch?v=ZbZSe6N_BXs"
