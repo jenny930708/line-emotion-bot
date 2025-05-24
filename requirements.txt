@@ -1,6 +1,6 @@
-Flask
+flask
+python-dotenv
+openai
 line-bot-sdk
 requests
 beautifulsoup4
-python-dotenv
-openai>=1.0.0
