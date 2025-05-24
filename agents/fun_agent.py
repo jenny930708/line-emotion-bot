@@ -1,8 +1,10 @@
+# agents/fun_agent.py
 import os
 import random
 import requests
 from bs4 import BeautifulSoup
 from linebot.models import TextSendMessage, ImageSendMessage
+from googleapiclient.discovery import build
 
 # Yahoo 梗圖搜尋
 def search_meme_image_by_yahoo(query="梗圖"):
@@ -19,33 +21,51 @@ def search_meme_image_by_yahoo(query="梗圖"):
         print(f"[Yahoo 搜圖錯誤] {e}")
     return None
 
-# 音樂需求處理：包含關鍵字對應與隨機播放
+# YouTube 音樂搜尋
+def search_youtube_music(query="放鬆音樂"):
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    if not api_key:
+        return None
+    try:
+        youtube = build("youtube", "v3", developerKey=api_key)
+        request = youtube.search().list(
+            q=query,
+            part="snippet",
+            maxResults=5,
+            type="video"
+        )
+        response = request.execute()
+        items = response.get("items", [])
+        if items:
+            video_id = random.choice(items)["id"]["videoId"]
+            return f"https://www.youtube.com/watch?v={video_id}"
+    except Exception as e:
+        print(f"[YouTube 搜尋錯誤] {e}")
+    return None
+
+# 處理音樂需求
+
 def handle_music_request(user_message):
-    music_suggestions = {
-        "周杰倫": "https://www.youtube.com/watch?v=2jD5V8YVhJM",
-        "林俊傑": "https://www.youtube.com/watch?v=Q9CSj5L8RNI",
-        "白噪音": "https://www.youtube.com/watch?v=q76bMs-NwRk",
-        "水晶": "https://www.youtube.com/watch?v=C2N1wSkCjZ8",
-        "輕音樂": "https://www.youtube.com/watch?v=lFcSrYw-ARY",
-        "放鬆": "https://www.youtube.com/watch?v=1ZYbU82GVz4",
-        "鋼琴": "https://www.youtube.com/watch?v=4Tr0otuiQuU",
-    }
+    if "周杰倫" in user_message:
+        query = "周杰倫 歌曲"
+    elif "林俊傑" in user_message:
+        query = "林俊傑 經典歌曲"
+    elif "白噪音" in user_message:
+        query = "白噪音 放鬆"
+    elif "水晶音樂" in user_message:
+        query = "crystal music relaxing"
+    else:
+        query = random.choice(["輕音樂", "療癒音樂", "relaxing music", "放鬆音樂"])
 
-    for keyword, url in music_suggestions.items():
-        if keyword in user_message:
-            return f"🎵 這是我為你挑選的 {keyword} 音樂，希望你會喜歡：{url}"
+    video_url = search_youtube_music(query)
+    if video_url:
+        return f"🎵 這是我為你挑選的音樂影片：{video_url}"
+    else:
+        return "抱歉，目前找不到合適的音樂影片 😥"
 
-    fallback_music = [
-        "https://www.youtube.com/watch?v=ZbZSe6N_BXs",
-        "https://www.youtube.com/watch?v=UfcAVejslrU",
-        "https://www.youtube.com/watch?v=5qap5aO4i9A"
-    ]
-    return f"🎵 這首音樂也許能陪伴你現在的心情：{random.choice(fallback_music)}"
-
-# 梗圖、音樂、影片回覆
+# 處理娛樂需求（梗圖、影片）
 def handle_fun(user_message):
     if "梗圖" in user_message:
-        # 抽取主題關鍵字，例如「動物」、「狗」、「貓」、「搞笑」
         theme_keywords = ["動物", "狗", "貓", "熊", "老虎", "貓咪", "狗狗", "鯊魚", "食物", "人類", "日常", "漫畫", "梗"]
         matched_theme = next((word for word in theme_keywords if word in user_message), None)
         search_query = f"{matched_theme}梗圖" if matched_theme else "梗圖"
@@ -56,10 +76,10 @@ def handle_fun(user_message):
         else:
             return TextSendMessage(text=f"❌ 沒找到與「{search_query}」相關的梗圖 😥")
 
-    elif "音樂" in user_message:
-        return TextSendMessage(text=handle_music_request(user_message))
-
     elif "影片" in user_message:
         return TextSendMessage(text="這支短影片讓你笑一笑：https://www.youtube.com/shorts/abc123xyz")
 
-    return TextSendMessage(text="你想看看什麼樣的梗圖呢？可以說「貓的梗圖」、「美食梗圖」之類的哦！")
+    elif "音樂" in user_message:
+        return TextSendMessage(text=handle_music_request(user_message))
+
+    return TextSendMessage(text="想放鬆一下嗎？你可以說：播放音樂、搞笑影片、梗圖等等喔！")
