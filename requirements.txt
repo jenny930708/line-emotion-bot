@@ -1,6 +1,6 @@
 flask
-python-dotenv
-openai
 line-bot-sdk
+python-dotenv
 requests
 beautifulsoup4
+openai
