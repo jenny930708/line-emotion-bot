@@ -49,16 +49,21 @@ def handle_music_request(user_message):
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我想聽哪一首歌，例如：周杰倫的青花瓷")
 
-    if "中文" in user_message:
-        search_query = "中文 歌曲 熱門 site:youtube.com"
+    # 改善語言判斷
+    if "中文" in user_message or "華語" in user_message:
+        search_query = "華語流行音樂 精選 MV site:youtube.com"
     elif "英文" in user_message:
-        search_query = "英文 歌曲 熱門 site:youtube.com"
+        search_query = "英文流行音樂 精選 MV site:youtube.com"
     else:
-        search_query = f'{keywords} 官方 MV site:youtube.com'
+        search_query = f'"{keywords}" 官方 MV site:youtube.com'
 
     link = search_youtube_link(search_query)
-    return TextSendMessage(text=f"🎵 推薦音樂：{link}")
 
+    # 若找不到，備援關鍵字
+    if not link or "找不到" in link:
+        link = search_youtube_link("華語 精選歌曲 官方 MV")
+
+    return TextSendMessage(text=f"🎵 推薦音樂：{link}")
 
 def auto_recommend_artist(user_message):
     match = re.search(r"([\u4e00-\u9fa5A-Za-z]+)(的歌|的歌曲)?", user_message)
