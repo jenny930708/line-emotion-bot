@@ -38,25 +38,46 @@ def search_youtube_link(query):
         print("YouTube 查詢失敗：", e)
     return "（找不到連結）"
 
-
 def handle_music_request(user_message):
+    # 移除常見語助詞
+    stop_words = ["我想聽", "播放", "想聽", "來點", "給我", "聽一下", "音樂", "歌曲", "首歌", "聽聽", "歌"]
     cleaned = user_message
-    for word in ["我想聽", "播放", "想聽", "來點", "給我", "音樂", "歌曲", "歌"]:
+    for word in stop_words:
         cleaned = cleaned.replace(word, "")
     keywords = cleaned.strip()
 
-    if re.match(r".+的$", keywords):
-        return TextSendMessage(text="請告訴我想聽哪一首歌，例如：周杰倫的青花瓷")
+    # 情境關鍵字建議
+    mood_map = {
+        "放鬆": "輕音樂 放鬆 身心靈",
+        "運動": "動感 音樂 運動 撥放清單",
+        "悲傷": "療癒 情歌 抒情",
+        "開心": "快樂 音樂 熱門",
+        "焦慮": "自然 音樂 放鬆",
+        "睡不著": "助眠 音樂 白噪音"
+    }
 
+    for mood, query in mood_map.items():
+        if mood in user_message:
+            link = search_youtube_link(query)
+            return TextSendMessage(text=f"🎵 給你推薦的 {mood} 音樂：{link}")
+
+    # 如果用戶輸入像「周杰倫的」但沒歌名
+    if re.match(r".+的$", keywords):
+        return TextSendMessage(text="請告訴我完整歌名，例如：周杰倫的青花瓷")
+
+    # 根據語系簡化關鍵字搜尋
     if "中文" in user_message:
-        search_query = "中文 歌曲 熱門 site:youtube.com"
+        search_query = "中文 熱門 歌曲 site:youtube.com"
     elif "英文" in user_message:
-        search_query = "英文 歌曲 熱門 site:youtube.com"
+        search_query = "英文 熱門 歌曲 site:youtube.com"
+    elif keywords:
+        search_query = f"{keywords} 官方 MV site:youtube.com"
     else:
-        search_query = f'{keywords} 官方 MV site:youtube.com'
+        search_query = "熱門 歌曲 site:youtube.com"
 
     link = search_youtube_link(search_query)
     return TextSendMessage(text=f"🎵 推薦音樂：{link}")
+
 
 
 def auto_recommend_artist(user_message):
