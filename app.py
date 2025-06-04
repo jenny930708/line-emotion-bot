@@ -63,8 +63,10 @@ def handle_music_request(user_message):
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我完整歌名，例如：周杰倫的青花瓷")
 
-    if "中文" in user_message:
-        search_query = "中文 熱門 歌曲 site:youtube.com"
+if "中文" in user_message:
+    search_query = "中文 熱門 歌曲 site:youtube.com"
+    link = search_youtube_link(search_query)
+    return TextSendMessage(text=f"🎵 這裡是幾首熱門中文歌曲推薦：{link}")
     elif "英文" in user_message:
         search_query = "英文 熱門 歌曲 site:youtube.com"
     elif keywords:
