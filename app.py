@@ -19,17 +19,15 @@ handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 last_meme_theme = {}
-
 story_topics = ["冒險", "友情", "溫馨", "奇幻", "動物", "勇氣"]
 
 
+# 🎵 搜尋 YouTube 音樂連結
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(url, headers=headers).text
-
-        # 更穩定的 regex：抓出影片 ID
         video_ids = re.findall(r"watch\?v=(.{11})", html)
         seen = set()
         for vid in video_ids:
@@ -38,18 +36,16 @@ def search_youtube_link(query):
                 return f"https://www.youtube.com/watch?v={vid}"
     except Exception as e:
         print("YouTube 查詢失敗：", e)
-
     return "⚠️ 找不到音樂連結，請換個關鍵字再試一次。"
 
+# 🎧 音樂推薦邏輯
 def handle_music_request(user_message):
-    # 移除常見語助詞
     stop_words = ["我想聽", "播放", "想聽", "來點", "給我", "聽一下", "音樂", "歌曲", "首歌", "聽聽", "歌"]
     cleaned = user_message
     for word in stop_words:
         cleaned = cleaned.replace(word, "")
     keywords = cleaned.strip()
 
-    # 情境關鍵字建議
     mood_map = {
         "放鬆": "輕音樂 放鬆 身心靈",
         "運動": "動感 音樂 運動 撥放清單",
@@ -64,11 +60,9 @@ def handle_music_request(user_message):
             link = search_youtube_link(query)
             return TextSendMessage(text=f"🎵 給你推薦的 {mood} 音樂：{link}")
 
-    # 如果用戶輸入像「周杰倫的」但沒歌名
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我完整歌名，例如：周杰倫的青花瓷")
 
-    # 根據語系簡化關鍵字搜尋
     if "中文" in user_message:
         search_query = "中文 熱門 歌曲 site:youtube.com"
     elif "英文" in user_message:
@@ -82,38 +76,7 @@ def handle_music_request(user_message):
     return TextSendMessage(text=f"🎵 推薦音樂：{link}")
 
 
-
-def auto_recommend_artist(user_message):
-    match = re.search(r"([\u4e00-\u9fa5A-Za-z]+)(的歌|的歌曲)?", user_message)
-    if not match:
-        return TextSendMessage(text="請告訴我你想聽哪位歌手的歌，例如：推薦幾首林俊傑的歌")
-    artist = match.group(1)
-    search_query = f"{artist} 熱門歌曲 官方 MV"
-
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(search_query)}"
-        res = requests.get(url, headers=headers)
-        video_ids = re.findall(r'"url":"/watch\\?v=(.{11})"', res.text)
-        seen = set()
-        links = []
-        for vid in video_ids:
-            if vid not in seen:
-                seen.add(vid)
-                links.append(f"https://www.youtube.com/watch?v={vid}")
-            if len(links) >= 3:
-                break
-        if not links:
-            return TextSendMessage(text="找不到熱門歌曲影片 😢")
-
-        msg = f"這裡是為你推薦的「{artist}」熱門歌曲：\n\n"
-        for idx, link in enumerate(links, 1):
-            msg += f"{idx}. 👉 {link}\n"
-        return TextSendMessage(text=msg)
-    except Exception as e:
-        return TextSendMessage(text=f"⚠️ 無法推薦歌曲：{str(e)}")
-
-
+# 🧚‍♀️ 故事生成
 def generate_story_by_topic(topic):
     try:
         variation = random.choice(["小狐狸", "獨角獸", "小女孩", "探險隊", "魔法師"])
@@ -130,6 +93,7 @@ def generate_story_by_topic(topic):
         return f"⚠️ 故事生成失敗：{str(e)}"
 
 
+# 🤖 GPT 聊天
 def chat_with_gpt(user_message):
     try:
         response = client.chat.completions.create(
@@ -144,6 +108,7 @@ def chat_with_gpt(user_message):
         return f"⚠️ 聊天出錯：{str(e)}"
 
 
+# 😂 Yahoo 梗圖搜尋
 def search_meme_image_by_yahoo(query="梗圖"):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -159,6 +124,7 @@ def search_meme_image_by_yahoo(query="梗圖"):
     return None
 
 
+# 🐶 梗圖處理
 def handle_fun_image(user_message, user_id):
     global last_meme_theme
     theme_keywords = ["動物", "狗", "貓", "熊", "老虎", "貓咪", "狗狗", "鯊魚", "食物", "人類", "日常", "漫畫", "梗"]
@@ -185,11 +151,13 @@ def handle_fun_image(user_message, user_id):
         return TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")
 
 
+# 🔍 健康檢查
 @app.route("/")
 def health_check():
     return "OK"
 
 
+# 📩 LINE Webhook
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
@@ -201,32 +169,32 @@ def callback():
     return "OK"
 
 
+# 📥 主訊息邏輯處理
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text.strip()
     user_id = event.source.user_id
     print(f"[使用者訊息] {user_message}")
 
-    if "推薦" in user_message and "歌" in user_message:
-        reply = auto_recommend_artist(user_message)
-    elif user_message in story_topics:
+    if user_message in story_topics:
         reply = TextSendMessage(text=generate_story_by_topic(user_message))
     elif "說故事" in user_message or "講故事" in user_message or "故事" in user_message:
         reply = TextSendMessage(text="你想聽什麼主題的故事呢？請輸入主題，例如：冒險、友情、溫馨、奇幻")
-    elif "聽" in user_message or "播放" in user_message:
-        reply = handle_music_request(user_message)
     elif "梗圖" in user_message or "再來一張" in user_message or "三張" in user_message or "3張" in user_message:
         reply = handle_fun_image(user_message, user_id)
         if isinstance(reply, list):
             for r in reply:
                 line_bot_api.push_message(user_id, r)
             return
+    elif "聽" in user_message or "播放" in user_message or "歌曲" in user_message or "音樂" in user_message:
+        reply = handle_music_request(user_message)
     else:
         reply = TextSendMessage(text=chat_with_gpt(user_message))
 
     line_bot_api.reply_message(event.reply_token, reply)
 
 
+# 🚀 啟動伺服器
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
