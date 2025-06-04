@@ -3,12 +3,6 @@ import re
 import random
 import urllib.parse
 import requests
-from bs4 
-import BeautifulSoupimport os
-import re
-import random
-import urllib.parse
-import requests
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
