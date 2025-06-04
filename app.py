@@ -42,11 +42,29 @@ def extract_singer(text):
 def search_youtube_link(query):
     headers = {"User-Agent": "Mozilla/5.0"}
     url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
-    html = requests.get(url, headers=headers).text
-    video_ids = re.findall(r'"url":"/watch\?v=(.{11})"', html)
-    if video_ids:
-        return f"https://www.youtube.com/watch?v={video_ids[0]}"
-    return None
+    
+    try:
+        html = requests.get(url, headers=headers).text
+        # 更廣泛地抓取影片ID（適應更多格式）
+        video_ids = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', html)
+        video_ids = list(dict.fromkeys(video_ids))  # 去除重複
+        
+        if video_ids:
+            return f"https://www.youtube.com/watch?v={video_ids[0]}"
+        else:
+            # fallback: 把關鍵字縮短（例如：王力宏 療癒歌曲 → 王力宏）
+            fallback_query = query.split()[0]
+            fallback_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(fallback_query)}"
+            fallback_html = requests.get(fallback_url, headers=headers).text
+            fallback_ids = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', fallback_html)
+            fallback_ids = list(dict.fromkeys(fallback_ids))
+            
+            if fallback_ids:
+                return f"https://www.youtube.com/watch?v={fallback_ids[0]}"
+    except Exception as e:
+        print(f"🔴 YouTube search error: {e}")
+    
+    return None  # 若兩階段都沒結果
 
 # webhook 路由
 @app.route("/callback", methods=["POST"])
