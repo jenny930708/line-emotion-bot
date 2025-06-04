@@ -26,9 +26,12 @@ story_topics = ["冒險", "友情", "溫馨", "奇幻", "動物", "勇氣"]
 def search_youtube_link(query):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
+        # 強化搜尋詞：加入音樂、歌曲、MV 等關鍵字
+        query += " 音樂 官方 MV"
         url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
         html = requests.get(url, headers=headers).text
         video_ids = re.findall(r"watch\?v=(.{11})", html)
+
         seen = set()
         for vid in video_ids:
             if vid not in seen:
@@ -36,6 +39,7 @@ def search_youtube_link(query):
                 return f"https://www.youtube.com/watch?v={vid}"
     except Exception as e:
         print("YouTube 查詢失敗：", e)
+
     return "⚠️ 找不到音樂連結，請換個關鍵字再試一次。"
 
 # 🎧 音樂推薦邏輯
