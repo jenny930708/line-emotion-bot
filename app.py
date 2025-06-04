@@ -38,33 +38,36 @@ def extract_singer(text):
             return match.group(1).strip()
     return None
 
-# YouTube 搜尋函式
+from bs4 import BeautifulSoup
+
 def search_youtube_link(query):
     headers = {"User-Agent": "Mozilla/5.0"}
-    url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
+    base_url = "https://www.youtube.com/results?search_query="
     
-    try:
+    def fetch_video(query_term):
+        url = f"{base_url}{urllib.parse.quote(query_term)}"
         html = requests.get(url, headers=headers).text
-        # 更廣泛地抓取影片ID（適應更多格式）
-        video_ids = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', html)
-        video_ids = list(dict.fromkeys(video_ids))  # 去除重複
+        soup = BeautifulSoup(html, "html.parser")
         
-        if video_ids:
-            return f"https://www.youtube.com/watch?v={video_ids[0]}"
-        else:
-            # fallback: 把關鍵字縮短（例如：王力宏 療癒歌曲 → 王力宏）
-            fallback_query = query.split()[0]
-            fallback_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(fallback_query)}"
-            fallback_html = requests.get(fallback_url, headers=headers).text
-            fallback_ids = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', fallback_html)
-            fallback_ids = list(dict.fromkeys(fallback_ids))
-            
-            if fallback_ids:
-                return f"https://www.youtube.com/watch?v={fallback_ids[0]}"
-    except Exception as e:
-        print(f"🔴 YouTube search error: {e}")
-    
-    return None  # 若兩階段都沒結果
+        # 取得所有標題與 href
+        for a_tag in soup.find_all("a"):
+            title = a_tag.get("title")
+            href = a_tag.get("href")
+            if title and href and "/watch?v=" in href:
+                # 如果標題中包含查詢的任一關鍵詞
+                if any(word in title for word in query_term.split()):
+                    video_id = href.split("v=")[-1].split("&")[0]
+                    return f"https://www.youtube.com/watch?v={video_id}"
+        return None
+
+    # 第一階段：完整關鍵字搜尋
+    result = fetch_video(query)
+    if result:
+        return result
+
+    # 第二階段 fallback（用第一個詞）
+    fallback = query.split()[0]
+    return fetch_video(fallback)
 
 # webhook 路由
 @app.route("/callback", methods=["POST"])
