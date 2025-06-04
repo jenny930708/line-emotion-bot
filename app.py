@@ -54,8 +54,19 @@ def extract_meme_count(text):
             return num_word_map[val]
     return 1
 
-# 其他函式維持不變...
-# 以下略，假設其餘函式與處理邏輯不變，只在 handle_fun_image 中替換張數判斷邏輯：
+def search_meme_image_by_yahoo(query="梗圖"):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        url = f"https://tw.images.search.yahoo.com/search/images?p={query}"
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "html.parser")
+        img_tags = soup.select("img")
+        img_urls = [img["src"] for img in img_tags if img.get("src") and img["src"].startswith("http")]
+        if img_urls:
+            return random.choice(img_urls)
+    except Exception as e:
+        print("Yahoo 梗圖搜尋錯誤：", e)
+    return None
 
 def handle_fun_image(user_message, user_id):
     global last_meme_theme
@@ -77,5 +88,10 @@ def handle_fun_image(user_message, user_id):
 
     return results if results else [TextSendMessage(text=f"❌ 找不到與「{theme}」相關的梗圖 😢")]
 
-# 其餘程式碼保持一致，例如 callback、handle_message 等。
-# 若你需要我也整合完整最終版（包含這些修改與其餘邏輯），也可以隨時告訴我！
+@app.route("/")
+def health_check():
+    return "OK"
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
