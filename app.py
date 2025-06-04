@@ -43,31 +43,29 @@ from bs4 import BeautifulSoup
 def search_youtube_link(query):
     headers = {"User-Agent": "Mozilla/5.0"}
     base_url = "https://www.youtube.com/results?search_query="
-    
-    def fetch_video(query_term):
+
+    def fetch_video(query_term, loose=False):
         url = f"{base_url}{urllib.parse.quote(query_term)}"
         html = requests.get(url, headers=headers).text
         soup = BeautifulSoup(html, "html.parser")
-        
-        # 取得所有標題與 href
+
         for a_tag in soup.find_all("a"):
             title = a_tag.get("title")
             href = a_tag.get("href")
             if title and href and "/watch?v=" in href:
-                # 如果標題中包含查詢的任一關鍵詞
-                if any(word in title for word in query_term.split()):
+                if loose or any(word in title for word in query_term.split()):
                     video_id = href.split("v=")[-1].split("&")[0]
                     return f"https://www.youtube.com/watch?v={video_id}"
         return None
 
-    # 第一階段：完整關鍵字搜尋
+    # 第一階段：標題嚴格比對
     result = fetch_video(query)
     if result:
         return result
 
-    # 第二階段 fallback（用第一個詞）
-    fallback = query.split()[0]
-    return fetch_video(fallback)
+    # 第二階段 fallback：放寬限制，只要是影片就接受
+    fallback_query = query.split()[0]
+    return fetch_video(fallback_query, loose=True)
 
 # webhook 路由
 @app.route("/callback", methods=["POST"])
