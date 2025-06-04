@@ -46,6 +46,7 @@ def handle_music_request(user_message):
         cleaned = cleaned.replace(word, "")
     keywords = cleaned.strip()
 
+    # 情境推薦
     mood_map = {
         "放鬆": "輕音樂 放鬆 身心靈",
         "運動": "動感 音樂 運動 撥放清單",
@@ -60,23 +61,33 @@ def handle_music_request(user_message):
             link = search_youtube_link(query)
             return TextSendMessage(text=f"🎵 給你推薦的 {mood} 音樂：{link}")
 
+    # 主動推薦熱門中文歌曲
+    if "中文" in user_message:
+        songs = [
+            "周杰倫 - 告白氣球",
+            "田馥甄 - 小幸運",
+            "林俊傑 - 江南",
+            "張惠妹 - 聽海",
+            "五月天 - 突然好想你"
+        ]
+        links = [search_youtube_link(song) for song in songs]
+        msg = "🎵 為你推薦幾首熱門中文歌曲：\n\n"
+        for i, (song, link) in enumerate(zip(songs, links), 1):
+            msg += f"{i}. {song} 👉 {link}\n"
+        return TextSendMessage(text=msg)
+
+    # 補充：避免使用不完整歌名
     if re.match(r".+的$", keywords):
         return TextSendMessage(text="請告訴我完整歌名，例如：周杰倫的青花瓷")
 
-if "中文" in user_message:
-    search_query = "中文 熱門 歌曲 site:youtube.com"
-    link = search_youtube_link(search_query)
-    return TextSendMessage(text=f"🎵 這裡是幾首熱門中文歌曲推薦：{link}")
-    elif "英文" in user_message:
-        search_query = "英文 熱門 歌曲 site:youtube.com"
-    elif keywords:
+    # 一般關鍵字搜尋
+    if keywords:
         search_query = f"{keywords} 官方 MV site:youtube.com"
     else:
         search_query = "熱門 歌曲 site:youtube.com"
 
     link = search_youtube_link(search_query)
     return TextSendMessage(text=f"🎵 推薦音樂：{link}")
-
 
 # 🧚‍♀️ 故事生成
 def generate_story_by_topic(topic):
